@@ -19,7 +19,8 @@ BINDIR="${REPO_ROOT}/.build/bin"
 mkdir -p "${BINDIR}"
 
 cd "${REPO_ROOT}"
-go build -o "${BINDIR}/kubectl-ai" .
+./dev/tasks/install
+cp "$(which kubectl-ai)" "${BINDIR}/"
 
 cd "${REPO_ROOT}/k8s-bench"
 go build -o "${BINDIR}/k8s-bench" .
