@@ -88,6 +88,14 @@ verify-autogen: ## Verify auto-generated files are up to date
 	@echo "λ Verifying auto-generated files..."
 	./dev/ci/presubmits/verify-autogen.sh
 
+generate:
+	go generate ./internal/mocks
+
+verify-mocks:
+	# Re-generate and fail if it produces diffs
+	go generate ./internal/mocks
+	git diff --quiet --exit-code -- internal/mocks || \
+	  (echo "Mocks are stale. Run 'make generate' and commit changes." && exit 1)
 # --- Generation Tasks ---
 generate-actions: ## Generate GitHub Actions workflows
 	@echo "λ Generating GitHub Actions workflows..."
