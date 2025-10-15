@@ -127,7 +127,7 @@ do
   
   # Paths for analysis files
   MARKDOWN_FILE="${OUTPUT_DIR}/k8s-bench.md"
-  JSON_FILE="${OUTPUT_DIR}/k8s-bench.js"
+  JSON_FILE="${OUTPUT_DIR}/k8s-bench.json"
 
   # Run for markdown format
   "${K8S_BENCH_BIN}" analyze --input-dir="${OUTPUT_DIR}" --results-filepath="${MARKDOWN_FILE}" --output-format=markdown --show-failures
