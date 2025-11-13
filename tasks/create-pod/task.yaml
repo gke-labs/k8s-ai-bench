@@ -1,0 +1,5 @@
+script:
+- prompt: "Please create a nginx pod named web-server in the web-server namespace"
+verifier: "verify.sh"
+cleanup: "cleanup.sh"
+difficulty: "easy" 

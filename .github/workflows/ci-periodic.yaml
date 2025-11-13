@@ -54,7 +54,7 @@ jobs:
               echo "Attempt $attempt failed or timed out"
               
               # Cleanup any hanging processes
-              pkill -f k8s-bench || true
+              pkill -f k8s-ai-bench || true
               pkill -f kubectl-ai || true
               
               if [ $attempt -eq 2 ]; then
@@ -69,7 +69,7 @@ jobs:
       - name: Analyse results
         run: |
           ./dev/ci/periodics/analyze-evals.sh
-          cat ${{ github.workspace }}/.build/k8s-bench.md >> ${GITHUB_STEP_SUMMARY}
+          cat ${{ github.workspace }}/.build/k8s-ai-bench.md >> ${GITHUB_STEP_SUMMARY}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}

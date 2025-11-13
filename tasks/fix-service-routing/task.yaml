@@ -1,0 +1,6 @@
+script:
+- prompt: "Please diagnose and fix why the nginx service in namespace 'web' isn't accessible"
+setup: "setup.sh"
+verifier: "verify.sh"
+cleanup: "cleanup.sh"
+difficulty: "medium" 

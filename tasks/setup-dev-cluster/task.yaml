@@ -1,0 +1,7 @@
+script:
+   - promptFile: setup-dev-cluster.md
+
+difficulty: hard
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh

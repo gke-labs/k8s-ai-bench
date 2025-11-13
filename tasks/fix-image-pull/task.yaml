@@ -1,0 +1,6 @@
+script:
+- prompt: "Please fix the error in the deployment named 'app' in namespace 'debug'"
+setup: "setup.sh"
+verifier: "verify.sh"
+cleanup: "cleanup.sh"
+difficulty: "medium" 

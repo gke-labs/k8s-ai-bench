@@ -14,7 +14,7 @@
 
 # This workflow allows PR owners who add new eval tasks to manually run tests on their changes using the GitHub Actions UI.
 #It is intended for self-service validation of new or modified evals before merging.
-name: On-Demand k8s-bench Eval Test
+name: On-Demand k8s-ai-bench Eval Test
 
 on:
   workflow_dispatch:
@@ -56,7 +56,7 @@ jobs:
       - name: Analyse results
         run: |
           ./dev/ci/periodics/analyze-evals.sh
-          cat ${{ github.workspace }}/.build/k8s-bench.md >> ${GITHUB_STEP_SUMMARY}
+          cat ${{ github.workspace }}/.build/k8s-ai-bench.md >> ${GITHUB_STEP_SUMMARY}
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: false
