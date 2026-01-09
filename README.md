@@ -5,7 +5,7 @@
 ## 📊 Live Dashboard
 
 View the latest benchmark results on our live dashboard:
-**[gke-labs.github.io/k8s-ai-bench](https://gke-labs.github.io/k8s-ai-bench/)**
+**[k8s-ai-bench Leaderboard](https://gke-labs.github.io/k8s-ai-bench/)**
 
 ![Leaderboard Screenshot](assets/leaderboard.png)
 
