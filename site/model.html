@@ -56,7 +56,10 @@
 					document.getElementById('model-title').innerText = 'Model Not Found';
 					return;
 				}
-				document.getElementById('model-title').innerText = 'Details: ' + modelId;
+				const lab = getLabInfo(modelId);
+				const displayName = getModelDisplayName(modelId);
+				let iconHtml = lab.icon ? '<img src="' + lab.icon + '" class="lab-icon" alt="' + lab.name + '">' : '';
+				document.getElementById('model-title').innerHTML = iconHtml + ' ' + displayName;
 				const tbody = document.querySelector('#details-table tbody');
 				
 				let filteredData = data;

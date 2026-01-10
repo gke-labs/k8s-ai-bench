@@ -327,6 +327,41 @@ th.desc::after {
   text-decoration: underline;
 }
 
+/* Lab icon styles */
+.lab-icon {
+  height: 20px;
+  width: auto;
+  margin-right: 8px;
+  vertical-align: middle;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.model-cell {
+  width: 100%;
+}
+
+.model-cell .model-link,
+.model-cell .model-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-name {
+  font-weight: bold;
+  font-size: 1.05em;
+  color: #24292e;
+}
+
+/* Icon in h1 title */
+h1 .lab-icon {
+  height: 28px;
+  width: auto;
+  margin-right: 10px;
+  /* Slight optical adjustment for header alignment */
+}
+
 .task-link {
   text-decoration: none;
   color: #24292e;

@@ -46,8 +46,9 @@
 				const tbody = document.querySelector('#task-detail-table tbody');
 				tbody.innerHTML = data.map(row => {
 					const dots = row.runs.map(r => '<div class="run-dot '+r.val+'" title="Run '+r.r+': '+r.val+'"></div>').join('');
-					return '<tr><td><a href="model.html?id='+encodeURIComponent(row.model)+'" class="model-link">'+row.model+'</a></td>' +
-						   '<td>'+row.p1+'%%</td><td>'+dots+'</td></tr>';
+					const modelCell = getModelWithIcon(row.model, 'model.html?id='+encodeURIComponent(row.model));
+					return '<tr><td class="model-cell">' + modelCell + '</td>' +
+						   '<td>'+row.p1+'%</td><td>'+dots+'</td></tr>';
 				}).join('');
 			}
 		</script>

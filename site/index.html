@@ -91,10 +91,10 @@
 				
 				tbody.innerHTML = data.map(row => {
 					const val = row[currentMetric];
-					const hue = getHue(val);
-					return '<tr><td><a href="model.html?id='+encodeURIComponent(row.id)+'" class="model-link">'+row.id+'</a></td>' +
+					const modelCell = getModelWithIcon(row.id, 'model.html?id='+encodeURIComponent(row.id));
+					return '<tr><td class="model-cell">' + modelCell + '</td>' +
 						   '<td><div class="score-container"><div class="score-text" style="font-weight:bold;">'+val+'%</div>' +
-						   createBar(val, hue) + '</div></td>' +
+						   createModelBar(val, row.id) + '</div></td>' +
 						   '<td><span style="font-size:0.85em; color:#57606a;">'+row.type+'</span></td></tr>';
 				}).join('');
 			}

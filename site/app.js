@@ -3,6 +3,100 @@ const MODEL_KEYWORDS = {
     "gemini": "Proprietary"
 };
 
+// Lab/Company identification and styling
+const LAB_CONFIG = {
+    google: {
+        keywords: ["gemini"],
+        name: "Google",
+        icon: "assets/google.svg"
+    },
+    qwen: {
+        keywords: ["qwen"],
+        name: "Qwen",
+        icon: "assets/qwen.svg"
+    },
+    openai: {
+        keywords: ["openai", "gpt"],
+        name: "OpenAI",
+        icon: "assets/openai.svg"
+    },
+    zhipu: {
+        keywords: ["zai", "glm"],
+        name: "Zhipu AI",
+        icon: "assets/zhipu.svg"
+    }
+};
+
+// Unique color for each model - visually distinct palette
+const MODEL_COLORS = {
+    "gemini-2.5-pro": "#4285F4",           // Google Blue
+    "gemini-2.5-flash": "#34A853",         // Google Green
+    "gemini-3-pro-preview": "#EA4335",     // Google Red
+    "Qwen/Qwen3-Coder-480B-A35B-Instruct": "#6366F1",  // Indigo
+    "Qwen/Qwen3-Coder-30B-A3B-Instruct": "#8B5CF6",    // Purple
+    "Qwen/Qwen3-Next-80B-A3B-Instruct": "#A855F7",     // Violet
+    "openai/gpt-oss-120b": "#10A37F",      // OpenAI Teal
+    "openai/gpt-oss-20b": "#059669",       // Emerald
+    "zai-org/GLM-4.6": "#F97316",          // Orange
+    "zai-org/GLM-4.5": "#FB923C"           // Light Orange
+};
+
+// Display name overrides for cleaner presentation
+const MODEL_DISPLAY_NAMES = {
+    "gemini-2.5-pro": "gemini-2.5-pro",
+    "gemini-2.5-flash": "gemini-2.5-flash",
+    "gemini-3-pro-preview": "gemini-3-pro-preview",
+    "Qwen/Qwen3-Coder-480B-A35B-Instruct": "qwen3-coder-480b",
+    "Qwen/Qwen3-Coder-30B-A3B-Instruct": "qwen3-coder-30b",
+    "Qwen/Qwen3-Next-80B-A3B-Instruct": "qwen3-next-80b",
+    "openai/gpt-oss-120b": "gpt-oss-120b",
+    "openai/gpt-oss-20b": "gpt-oss-20b",
+    "zai-org/GLM-4.6": "glm-4.6",
+    "zai-org/GLM-4.5": "glm-4.5"
+};
+
+function getModelColor(modelName) {
+    return MODEL_COLORS[modelName] || "#6B7280";
+}
+
+function getLabInfo(modelName) {
+    const n = modelName.toLowerCase();
+    for (let labKey in LAB_CONFIG) {
+        const lab = LAB_CONFIG[labKey];
+        for (let keyword of lab.keywords) {
+            if (n.includes(keyword)) {
+                return { key: labKey, ...lab };
+            }
+        }
+    }
+    return { key: 'default', name: 'Other', icon: null };
+}
+
+function getModelDisplayName(modelName) {
+    // Check for explicit display name override first
+    if (MODEL_DISPLAY_NAMES[modelName]) {
+        return MODEL_DISPLAY_NAMES[modelName];
+    }
+    // Extract just the model name without org prefix if present
+    if (modelName.includes('/')) {
+        return modelName.split('/').pop();
+    }
+    return modelName;
+}
+
+function getModelWithIcon(modelName, linkUrl) {
+    const lab = getLabInfo(modelName);
+    const displayName = getModelDisplayName(modelName);
+    let iconHtml = '';
+    if (lab.icon) {
+        iconHtml = '<img src="' + lab.icon + '" class="lab-icon" alt="' + lab.name + '" title="' + lab.name + '">';
+    }
+    if (linkUrl) {
+        return iconHtml + '<a href="' + linkUrl + '" class="model-link">' + displayName + '</a>';
+    }
+    return iconHtml + '<span class="model-name">' + displayName + '</span>';
+}
+
 async function loadData() {
     try {
         const response = await fetch(DATA_URL);
@@ -10,17 +104,17 @@ async function loadData() {
         const text = await response.text();
         const rawData = text.trim().split('\n').map(line => {
             try { return JSON.parse(line); } catch (e) { return null; }
-        }).filter(x => x); 
+        }).filter(x => x);
         processData(rawData);
         if (window.renderPage) window.renderPage();
     } catch (err) {
         console.error(err);
         const container = document.querySelector('.container');
-        if(container) {
-            container.innerHTML = 
+        if (container) {
+            container.innerHTML =
                 '<div style="color:#cf222e; text-align:center; margin-top:50px; background:#fff; padding:2rem; border-radius:6px; border:1px solid #e1e4e8;">' +
                 '<h2>Error Loading Data</h2>' +
-                '<p>Could not fetch <code>'+DATA_URL+'</code>.</p>' +
+                '<p>Could not fetch <code>' + DATA_URL + '</code>.</p>' +
                 '<p style="color:#57606a;"><strong>Note:</strong> If opening locally, you must run a local server (browsers block file:// access).</p>' +
                 '<code style="background:#f6f8fa; padding:5px; border-radius:4px;">python3 -m http.server</code>' +
                 '</div>';
@@ -57,9 +151,9 @@ function processData(rawData) {
         };
     });
 
-    const grouped = {}; 
+    const grouped = {};
     const allTasks = new Set();
-    
+
     cleanedData.forEach(item => {
         const m = item.model;
         const t = item.task;
@@ -99,8 +193,8 @@ function processData(rawData) {
             });
         }
 
-        const avgP1 = p1s.length ? p1s.reduce((a,b)=>a+b,0)/p1s.length : 0;
-        const avgP5 = p5s.length ? p5s.reduce((a,b)=>a+b,0)/p5s.length : 0;
+        const avgP1 = p1s.length ? p1s.reduce((a, b) => a + b, 0) / p1s.length : 0;
+        const avgP5 = p5s.length ? p5s.reduce((a, b) => a + b, 0) / p5s.length : 0;
         const taskCount = Object.keys(tasksMap).length;
         const pAll = taskCount ? (passAllCount / taskCount) * 100 : 0;
 
@@ -113,8 +207,8 @@ function processData(rawData) {
             runs: totalRuns,
             tasks: taskCount
         });
-        
-        mRows.sort((a,b) => (a.task > b.task) ? 1 : (a.task === b.task) ? a.run - b.run : -1);
+
+        mRows.sort((a, b) => (a.task > b.task) ? 1 : (a.task === b.task) ? a.run - b.run : -1);
         model_details[model] = mRows;
     }
 
@@ -130,7 +224,7 @@ function processData(rawData) {
         }
         const nTotal = allRes.length;
         const cTotal = allRes.filter(r => r === 'success').length;
-        
+
         tasks.push({
             name: tName,
             p1: parseFloat(passAtK(nTotal, cTotal, 1).toFixed(1)),
@@ -144,16 +238,16 @@ function processData(rawData) {
                 const n = items.length;
                 const c = items.filter(i => i.result === 'success').length;
                 const p1 = passAtK(n, c, 1);
-                const runs = items.map((i, idx) => ({ r: idx+1, val: i.result === 'success' ? 'S' : 'F' }));
+                const runs = items.map((i, idx) => ({ r: idx + 1, val: i.result === 'success' ? 'S' : 'F' }));
                 breakdown.push({ model: m, p1: parseFloat(p1.toFixed(1)), runs: runs });
             }
         }
-        breakdown.sort((a,b) => b.p1 - a.p1);
+        breakdown.sort((a, b) => b.p1 - a.p1);
         task_details[tName] = breakdown;
     });
 
-    leaderboard.sort((a,b) => b.p5 - a.p5);
-    tasks.sort((a,b) => a.p1 - b.p1);
+    leaderboard.sort((a, b) => b.p5 - a.p5);
+    tasks.sort((a, b) => a.p1 - b.p1);
 
     window.PROCESSED_DATA = { leaderboard, tasks, details: model_details, task_details };
 }
@@ -161,26 +255,37 @@ function processData(rawData) {
 function getHue(percentage) { return (percentage / 100) * 120; }
 
 function createMiniBar(val, hue) {
-    return '<div style="height: 6px; width: 100%; background: #eee; border-radius: 3px; margin-top: 5px; overflow: hidden;"><div style="height: 100%; width: '+val+'%; background-color: hsla('+hue+', 85%, 40%, 1.0);"></div></div>';
+    return '<div style="height: 6px; width: 100%; background: #eee; border-radius: 3px; margin-top: 5px; overflow: hidden;"><div style="height: 100%; width: ' + val + '%; background-color: hsla(' + hue + ', 85%, 40%, 1.0);"></div></div>';
 }
 
 function createBar(val, hue) {
-    return '<div class="score-bar-wrapper"><div class="bar-segment" style="width: '+val+'%; background-color: hsla('+hue+', 85%, 40%, 1.0);"></div></div>';
+    return '<div class="score-bar-wrapper"><div class="bar-segment" style="width: ' + val + '%; background-color: hsla(' + hue + ', 85%, 40%, 1.0);"></div></div>';
+}
+
+// Bar functions with model-specific colors
+function createModelBar(val, modelName) {
+    const color = getModelColor(modelName);
+    return '<div class="score-bar-wrapper"><div class="bar-segment" style="width: ' + val + '%; background-color: ' + color + ';"></div></div>';
+}
+
+function createModelMiniBar(val, modelName) {
+    const color = getModelColor(modelName);
+    return '<div style="height: 6px; width: 100%; background: #eee; border-radius: 3px; margin-top: 5px; overflow: hidden;"><div style="height: 100%; width: ' + val + '%; background-color: ' + color + ';"></div></div>';
 }
 
 function sortTable(table, colIndex) {
     const tbody = table.querySelector('tbody');
     const rows = Array.from(tbody.querySelectorAll('tr'));
-    const header = table.querySelector('th[data-idx=\"'+colIndex+'\"]');
+    const header = table.querySelector('th[data-idx=\"' + colIndex + '\"]');
     const isAsc = header.classList.contains('asc');
     const dir = isAsc ? -1 : 1;
     rows.sort((a, b) => {
         const aTxt = a.children[colIndex].innerText.trim();
         const bTxt = b.children[colIndex].innerText.trim();
-        const aNum = parseFloat(aTxt.replace(/[^0-9.-]+/g,""));
-        const bNum = parseFloat(bTxt.replace(/[^0-9.-]+/g,""));
+        const aNum = parseFloat(aTxt.replace(/[^0-9.-]+/g, ""));
+        const bNum = parseFloat(bTxt.replace(/[^0-9.-]+/g, ""));
         if (!isNaN(aNum) && !isNaN(bNum) && (aTxt.includes('%') || aTxt.match(/^\\d/))) return (aNum - bNum) * dir;
-        return aTxt.localeCompare(bTxt, undefined, {numeric: true}) * dir;
+        return aTxt.localeCompare(bTxt, undefined, { numeric: true }) * dir;
     });
     tbody.innerHTML = '';
     tbody.append(...rows);
