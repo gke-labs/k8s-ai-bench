@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,37 +18,72 @@
 	</script>
 	<script src="app.js"></script>
 </head>
+
 <body class="bg-zinc-50 text-zinc-900 font-sans min-h-screen flex flex-col">
 	<nav class="bg-zinc-900 border-b border-zinc-800 px-6 py-4 flex items-center justify-between">
 		<a href="index.html" class="text-white font-semibold text-lg hover:text-zinc-300 transition-colors">k8s-ai-bench</a>
 		<div class="flex items-center gap-2">
 			<a href="index.html" class="px-3 py-1.5 rounded-md text-sm font-medium bg-zinc-800 text-white">Leaderboard</a>
-			<a href="tasks.html" class="px-3 py-1.5 rounded-md text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">Tasks</a>
-			<a href="about.html" class="px-3 py-1.5 rounded-md text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">About</a>
-			<a href="https://github.com/gke-labs/k8s-ai-bench" class="px-3 py-1.5 rounded-md text-sm font-medium text-zinc-400 border border-zinc-700 hover:text-white hover:border-zinc-500 transition-colors" target="_blank">GitHub ↗</a>
+			<a href="tasks.html"
+				class="px-3 py-1.5 rounded-md text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">Tasks</a>
+			<a href="about.html"
+				class="px-3 py-1.5 rounded-md text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">About</a>
+			<a href="https://github.com/gke-labs/k8s-ai-bench"
+				class="px-3 py-1.5 rounded-md text-sm font-medium text-zinc-400 border border-zinc-700 hover:text-white hover:border-zinc-500 transition-colors"
+				target="_blank">GitHub ↗</a>
 		</div>
 	</nav>
 
 	<main class="flex-1 max-w-5xl mx-auto px-6 py-8 w-full">
 		<h1 class="text-2xl font-semibold text-zinc-900 mb-6">k8s-ai-bench Leaderboard</h1>
 
-		<div class="bg-white rounded-lg border border-zinc-200 p-6 mb-8">
-			<div class="space-y-2 text-sm text-zinc-600">
-				<p><span class="font-semibold text-zinc-900">Goal:</span> Determine which LLM is best suited for solving Kubernetes tasks.</p>
-				<p><span class="font-semibold text-zinc-900">Method:</span> Evaluation against specific tasks in the <a href="https://github.com/gke-labs/k8s-ai-bench" target="_blank" class="text-blue-600 hover:text-blue-700 hover:underline">k8s-ai-bench</a> repository (totaling 120 execution runs per model).</p>
+		<div class="mb-12">
+			<div class="max-w-4xl">
+				<p class="text-lg text-zinc-600 mb-8 leading-relaxed">
+					Evaluate and compare Large Language Models on their capability to solve real-world Kubernetes tasks.
+					From creating deployments to debugging crash loops, we test capabilities across <strong>120 execution
+						runs</strong> per model.
+				</p>
 			</div>
-			<div class="border-t border-zinc-100 pt-4 mt-4">
-				<p class="font-semibold text-zinc-900 text-sm mb-2">Metrics:</p>
-				<div class="space-y-1 text-sm text-zinc-600">
-					<p><strong>Pass@1:</strong> Can the agent solve the task on the first try? This measures raw capability and immediate correctness.</p>
-					<p><strong>Pass@5:</strong> Can the agent solve the task at least once in 5 attempts? This shows if the agent can eventually find a solution.</p>
-					<p><strong>Pass All 5:</strong> Does the agent solve the task every single time? This measures reliability and consistency, which is crucial for autonomous usage.</p>
+
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+				<!-- Pass@1 Card -->
+				<div class="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+					<h3 class="text-sm font-semibold text-zinc-900 mb-2 flex items-center gap-2">
+						<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+						Pass@1
+					</h3>
+					<p class="text-sm text-zinc-600">Can the agent solve the task on the first try? Measures <strong>immediate
+							correctness</strong>.</p>
+				</div>
+
+				<!-- Pass@5 Card -->
+				<div class="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+					<h3 class="text-sm font-semibold text-zinc-900 mb-2 flex items-center gap-2">
+						<span class="w-2 h-2 rounded-full bg-blue-500"></span>
+						Pass@5
+					</h3>
+					<p class="text-sm text-zinc-600">Can the agent solve the task at least once in 5 attempts? shows
+						<strong>potential capability</strong>.
+					</p>
+				</div>
+
+				<!-- Pass All 5 Card -->
+				<div class="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+					<h3 class="text-sm font-semibold text-zinc-900 mb-2 flex items-center gap-2">
+						<span class="w-2 h-2 rounded-full bg-purple-500"></span>
+						Pass All 5
+					</h3>
+					<p class="text-sm text-zinc-600">Does the agent solve the task every single time? Measures <strong>reliability
+							and consistency</strong>.</p>
 				</div>
 			</div>
 		</div>
 
-		<div class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800 mb-4 hidden" id="pAll-disclaimer">
-			<strong>Note:</strong> We are still evaluating whether "Pass@All" is a robust metric. It represents the percentage of tasks where the model succeeded in every single attempt (Consistency).
+		<div class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800 mb-4 hidden"
+			id="pAll-disclaimer">
+			<strong>Note:</strong> We are still evaluating whether "Pass@All" is a robust metric. It represents the percentage
+			of tasks where the model succeeded in every single attempt (Consistency).
 		</div>
 
 		<div class="overflow-x-auto">
@@ -55,14 +91,22 @@
 				<table class="w-full" id="leaderboard-table">
 					<thead>
 						<tr class="bg-zinc-50 border-b border-zinc-200">
-							<th class="px-4 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wide" style="width: 240px;">Model</th>
+							<th class="px-4 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wide"
+								style="width: 240px;">Model</th>
 							<th class="px-4 py-3 text-left">
 								<div class="flex items-center gap-3">
 									<span class="text-xs font-medium text-zinc-500 uppercase tracking-wide">Score</span>
 									<div class="bg-zinc-200 p-0.5 rounded-md inline-flex gap-0.5">
-										<button class="px-2 py-1 text-xs font-medium rounded transition-all toggle-btn text-zinc-500 hover:text-zinc-700" onclick="setMetric('p1')" id="btn-p1">Pass@1</button>
-										<button class="px-2 py-1 text-xs font-medium rounded transition-all toggle-btn bg-white text-zinc-900 shadow-sm" onclick="setMetric('p5')" id="btn-p5">Pass@5</button>
-										<button class="px-2 py-1 text-xs font-medium rounded transition-all toggle-btn text-zinc-500 hover:text-zinc-700" onclick="setMetric('pAll')" id="btn-pAll" title="Pass All 5 - Experimental metric">Pass@All</button>
+										<button
+											class="px-2 py-1 text-xs font-medium rounded transition-all toggle-btn text-zinc-500 hover:text-zinc-700"
+											onclick="setMetric('p1')" id="btn-p1">Pass@1</button>
+										<button
+											class="px-2 py-1 text-xs font-medium rounded transition-all toggle-btn bg-white text-zinc-900 shadow-sm"
+											onclick="setMetric('p5')" id="btn-p5">Pass@5</button>
+										<button
+											class="px-2 py-1 text-xs font-medium rounded transition-all toggle-btn text-zinc-500 hover:text-zinc-700"
+											onclick="setMetric('pAll')" id="btn-pAll"
+											title="Pass All 5 - Experimental metric">Pass@All</button>
 									</div>
 								</div>
 							</th>
@@ -71,11 +115,13 @@
 									<span class="text-xs font-medium text-zinc-500 uppercase tracking-wide">Type</span>
 									<div class="flex items-center gap-3">
 										<label class="flex items-center gap-1 text-xs text-zinc-600 cursor-pointer">
-											<input type="checkbox" id="chk-prop" checked onchange="renderPage()" class="w-3 h-3 rounded border-zinc-300 text-blue-600 focus:ring-blue-500">
+											<input type="checkbox" id="chk-prop" checked onchange="renderPage()"
+												class="w-3 h-3 rounded border-zinc-300 text-blue-600 focus:ring-blue-500">
 											Prop
 										</label>
 										<label class="flex items-center gap-1 text-xs text-zinc-600 cursor-pointer">
-											<input type="checkbox" id="chk-open" checked onchange="renderPage()" class="w-3 h-3 rounded border-zinc-300 text-blue-600 focus:ring-blue-500">
+											<input type="checkbox" id="chk-open" checked onchange="renderPage()"
+												class="w-3 h-3 rounded border-zinc-300 text-blue-600 focus:ring-blue-500">
 											OSS
 										</label>
 									</div>
@@ -107,8 +153,8 @@
 
 				renderPage();
 			}
-			window.renderPage = function() {
-				if(!window.PROCESSED_DATA) return;
+			window.renderPage = function () {
+				if (!window.PROCESSED_DATA) return;
 				const tbody = document.querySelector('#leaderboard-table tbody');
 				const showProp = document.getElementById('chk-prop').checked;
 				const showOpen = document.getElementById('chk-open').checked;
@@ -122,15 +168,16 @@
 
 				tbody.innerHTML = data.map(row => {
 					const val = row[currentMetric];
-					const modelCell = getModelWithIcon(row.id, 'model.html?id='+encodeURIComponent(row.id));
+					const modelCell = getModelWithIcon(row.id, 'model.html?id=' + encodeURIComponent(row.id));
 					const typeClass = row.type === 'Proprietary' ? 'bg-blue-50 text-blue-700' : 'bg-emerald-50 text-emerald-700';
 					return '<tr class="hover:bg-zinc-50 transition-colors"><td class="px-4 py-3"><div class="flex items-center">' + modelCell + '</div></td>' +
-						   '<td class="px-4 py-3"><div class="flex items-center gap-3"><span class="font-semibold text-zinc-900 w-12">'+val+'%</span>' +
-						   createModelBar(val, row.id) + '</div></td>' +
-						   '<td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-xs font-medium '+typeClass+'">'+row.type+'</span></td></tr>';
+						'<td class="px-4 py-3"><div class="flex items-center gap-3"><span class="font-semibold text-zinc-900 w-12">' + val + '%</span>' +
+						createModelBar(val, row.id) + '</div></td>' +
+						'<td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-xs font-medium ' + typeClass + '">' + row.type + '</span></td></tr>';
 				}).join('');
 			}
 		</script>
 	</main>
 </body>
+
 </html>
