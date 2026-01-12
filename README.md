@@ -4,16 +4,13 @@
 
 ## 📊 Live Dashboard
 
-View the latest benchmark results on our live dashboard:
-**[k8s-ai-bench Leaderboard](https://gke-labs.github.io/k8s-ai-bench/)**
-
-![Leaderboard Screenshot](assets/leaderboard.png)
+See [k8s-ai-bench live leaderboard](https://gke-labs.github.io/k8s-ai-bench/) for the latest benchmark results.
 
 The leaderboard shows run results for widely used proprietary and open models over a few run types:
 
-* **Pass@1**: Useful as a snapshot to see raw capability of a model relative to tasks in Kubernetes.
-* **Pass@5**: A broader metric which sees if models can eventually come by a correct solution.
-* **Pass All 5**: A metric we equate with base level capability of a model for these tasks. We are evaluating this because we feel it is especially important in the context of eventual autonomous usage.
+* **Pass@1**: Can the agent solve the task on the first try? This measures raw capability and immediate correctness.
+* **Pass@5**: Can the agent solve the task at least once in 5 attempts? This shows if the agent can eventually find a solution.
+* **Pass All 5**: Does the agent solve the task every single time? This measures reliability and consistency, which is crucial for autonomous usage.
 
 
 
