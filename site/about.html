@@ -46,9 +46,12 @@
 			<div>
 				<h2 class="text-lg font-semibold text-zinc-900 mb-3">Metrics</h2>
 				<ul class="space-y-2 text-zinc-600">
-					<li><strong class="text-zinc-900">Pass@1:</strong> Probability of passing on the first attempt</li>
-					<li><strong class="text-zinc-900">Pass@5:</strong> Probability of passing within 5 attempts</li>
-					<li><strong class="text-zinc-900">Pass All 5:</strong> Percentage of tasks passed on every single run</li>
+					<li><strong class="text-zinc-900">Pass@1:</strong> Can the agent solve the task on the first try? This measures raw
+						capability and immediate correctness.</li>
+					<li><strong class="text-zinc-900">Pass@5:</strong> Can the agent solve the task at least once in 5 attempts? This shows
+						if the agent can eventually find a solution.</li>
+					<li><strong class="text-zinc-900">Pass All 5:</strong> Does the agent solve the task every single time? This measures
+						reliability and consistency, which is crucial for autonomous usage.</li>
 				</ul>
 			</div>
 
