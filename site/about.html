@@ -28,45 +28,93 @@
 		</div>
 	</nav>
 
-	<main class="flex-1 max-w-3xl mx-auto px-6 py-8 w-full">
+	<main class="flex-1 max-w-5xl mx-auto px-6 py-8 w-full">
 		<h1 class="text-2xl font-semibold text-zinc-900 mb-6">About k8s-ai-bench</h1>
 
-		<div class="bg-white rounded-lg border border-zinc-200 p-6 space-y-6">
-			<p class="text-zinc-600 leading-relaxed">
-				<strong class="text-zinc-900">k8s-ai-bench</strong> is a benchmarking tool designed to evaluate Large Language Models (LLMs) on their ability to interact with and manage Kubernetes clusters.
+		<div class="max-w-4xl">
+			<p class="text-lg text-zinc-600 mb-8 leading-relaxed">
+				<strong class="text-zinc-900">k8s-ai-bench</strong> is a benchmark that evaluates and compares Large Language Models
+				on their capability to solve real-world Kubernetes tasks.
+				Tasks range from creating deployments to debugging crash loops and we test capabilities across <strong>120 execution
+					runs</strong> per model. Check <a href="tasks.html" class="text-blue-600 hover:underline">tasks</a> for more
+				details.
 			</p>
-
-			<div>
-				<h2 class="text-lg font-semibold text-zinc-900 mb-3">How it works</h2>
-				<p class="text-zinc-600 leading-relaxed">
+		</div>
+		
+		<div class="space-y-12">
+			<!-- How it works -->
+			<section>
+				<h2 class="text-lg font-semibold text-zinc-900 mb-3 flex items-center gap-2">
+					<svg class="w-5 h-5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+						xmlns="http://www.w3.org/2000/svg">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+					</svg>
+					How it works
+				</h2>
+				<p class="text-zinc-600 leading-relaxed max-w-3xl">
 					The benchmark runs a series of 24 predefined tasks against different LLMs. Each task is attempted multiple times to gauge consistency and potential.
 				</p>
-			</div>
+			</section>
 
-			<div>
-				<h2 class="text-lg font-semibold text-zinc-900 mb-3">Metrics</h2>
-				<ul class="space-y-2 text-zinc-600">
-					<li><strong class="text-zinc-900">Pass@1:</strong> Can the agent solve the task on the first try? This measures raw
-						capability and immediate correctness.</li>
-					<li><strong class="text-zinc-900">Pass@5:</strong> Can the agent solve the task at least once in 5 attempts? This shows
-						if the agent can eventually find a solution.</li>
-					<li><strong class="text-zinc-900">Pass All 5:</strong> Does the agent solve the task every single time? This measures
-						reliability and consistency, which is crucial for autonomous usage.</li>
+			<!-- Metrics -->
+			<section>
+				<h2 class="text-lg font-semibold text-zinc-900 mb-3 flex items-center gap-2">
+					<svg class="w-5 h-5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+						xmlns="http://www.w3.org/2000/svg">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+							d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+						</path>
+					</svg>
+					Metrics
+				</h2>
+				<ul class="space-y-3 text-zinc-600 max-w-3xl">
+					<li class="flex gap-2">
+						<strong class="text-zinc-900 min-w-24">Pass@1:</strong>
+						<span>Measures immediate correctness. Can the agent solve the task on the first try?</span>
+					</li>
+					<li class="flex gap-2">
+						<strong class="text-zinc-900 min-w-24">Pass@5:</strong>
+						<span>Measures potential capability. Can the agent solve the task at least once in 5 attempts?</span>
+					</li>
+					<li class="flex gap-2">
+						<strong class="text-zinc-900 min-w-24">Pass@All:</strong>
+						<span>Measures reliability & consistency. Does the agent solve the task every single time?</span>
+					</li>
 				</ul>
-			</div>
+			</section>
 
-			<div class="border-t border-zinc-100 pt-6">
-				<h2 class="text-lg font-semibold text-zinc-900 mb-3">Links</h2>
+			<!-- Links -->
+			<section>
+				<h2 class="text-lg font-semibold text-zinc-900 mb-3 flex items-center gap-2">
+					<svg class="w-5 h-5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+						xmlns="http://www.w3.org/2000/svg">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+							d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1">
+						</path>
+					</svg>
+					Links
+				</h2>
 				<ul class="space-y-2">
 					<li>
-						<a href="https://github.com/gke-labs/k8s-ai-bench" class="text-blue-600 hover:text-blue-700 hover:underline" target="_blank">k8s-ai-bench Repository ↗</a>
+						<a href="https://github.com/gke-labs/k8s-ai-bench"
+							class="text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1.5 font-medium" target="_blank">
+							k8s-ai-bench Repository ↗
+						</a>
 					</li>
 					<li>
-						<a href="https://github.com/GoogleCloudPlatform/kubectl-ai" class="text-blue-600 hover:text-blue-700 hover:underline" target="_blank">kubectl-ai Repository ↗</a>
+						<a href="https://github.com/GoogleCloudPlatform/kubectl-ai"
+							class="text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1.5 font-medium" target="_blank">
+							kubectl-ai Repository ↗
+						</a>
 					</li>
 				</ul>
-			</div>
+			</section>
 		</div>
 	</main>
+	<footer class="border-t border-zinc-200 bg-white mt-auto">
+		<div class="max-w-5xl mx-auto px-6 py-6 text-center text-sm text-zinc-500">
+			Made by GKE team @Google Cloud
+		</div>
+	</footer>
 </body>
 </html>

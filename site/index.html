@@ -39,10 +39,14 @@
 
 		<div class="mb-12">
 			<div class="max-w-4xl">
+				<p class="text-lg text-zinc-600 mb-4 leading-relaxed">
+					<strong class="text-zinc-900">k8s-ai-bench</strong> is a benchmark that evaluates and compares Large Language Models
+					on
+					their capability to solve real-world Kubernetes tasks.
+				</p>
 				<p class="text-lg text-zinc-600 mb-8 leading-relaxed">
-					Evaluate and compare Large Language Models on their capability to solve real-world Kubernetes tasks.
-					From creating deployments to debugging crash loops, we test capabilities across <strong>120 execution
-						runs</strong> per model.
+					Tasks range from creating deployments to debugging crash loops and we test capabilities across <strong>120 execution
+						runs</strong> per model. Check <a href="tasks.html" class="text-blue-600 hover:underline">tasks</a> for more details.
 				</p>
 			</div>
 
@@ -80,11 +84,7 @@
 			</div>
 		</div>
 
-		<div class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800 mb-4 hidden"
-			id="pAll-disclaimer">
-			<strong>Note:</strong> We are still evaluating whether "Pass@All" is a robust metric. It represents the percentage
-			of tasks where the model succeeded in every single attempt (Consistency).
-		</div>
+
 
 		<div class="overflow-x-auto">
 			<div class="rounded-lg border border-zinc-200 overflow-hidden">
@@ -98,10 +98,10 @@
 									<span class="text-xs font-medium text-zinc-500 uppercase tracking-wide">Score</span>
 									<div class="bg-zinc-200 p-0.5 rounded-md inline-flex gap-0.5">
 										<button
-											class="px-2 py-1 text-xs font-medium rounded transition-all toggle-btn text-zinc-500 hover:text-zinc-700"
+											class="px-2 py-1 text-xs font-medium rounded transition-all toggle-btn bg-white text-zinc-900 shadow-sm"
 											onclick="setMetric('p1')" id="btn-p1">Pass@1</button>
 										<button
-											class="px-2 py-1 text-xs font-medium rounded transition-all toggle-btn bg-white text-zinc-900 shadow-sm"
+											class="px-2 py-1 text-xs font-medium rounded transition-all toggle-btn text-zinc-500 hover:text-zinc-700"
 											onclick="setMetric('p5')" id="btn-p5">Pass@5</button>
 										<button
 											class="px-2 py-1 text-xs font-medium rounded transition-all toggle-btn text-zinc-500 hover:text-zinc-700"
@@ -133,10 +133,10 @@
 				</table>
 			</div>
 		</div>
-		<p class="text-sm text-zinc-500 text-center mt-6">Click on a model name to view detailed logs.</p>
+
 
 		<script>
-			let currentMetric = 'p5';
+											let currentMetric = 'p1';
 			function setMetric(metric) {
 				currentMetric = metric;
 				document.querySelectorAll('.toggle-btn').forEach(b => {
@@ -147,9 +147,7 @@
 				activeBtn.classList.remove('text-zinc-500', 'hover:text-zinc-700');
 				activeBtn.classList.add('bg-white', 'text-zinc-900', 'shadow-sm');
 
-				const disclaimer = document.getElementById('pAll-disclaimer');
-				if (metric === 'pAll') disclaimer.classList.remove('hidden');
-				else disclaimer.classList.add('hidden');
+
 
 				renderPage();
 			}
@@ -178,6 +176,11 @@
 			}
 		</script>
 	</main>
+	<footer class="border-t border-zinc-200 bg-white mt-auto">
+		<div class="max-w-5xl mx-auto px-6 py-6 text-center text-sm text-zinc-500">
+			Made by GKE team @Google Cloud
+		</div>
+	</footer>
 </body>
 
 </html>
