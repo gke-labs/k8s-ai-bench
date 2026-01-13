@@ -1,10 +1,4 @@
 apiVersion: v1
-kind: Pod
+kind: Namespace
 metadata:
-  labels:
-    taco: is-great
   name: resource-beta
-spec:
-  containers:
-  - image: nginxinc/nginx-unprivileged:latest
-    name: container-beta

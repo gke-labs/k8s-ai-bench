@@ -6,7 +6,7 @@ metadata:
   name: resource-alpha
 spec:
   containers:
-  - image: nginx:latest
+  - image: safe-images.com/nginx:latest
     name: container-alpha
     securityContext:
       readOnlyRootFilesystem: false

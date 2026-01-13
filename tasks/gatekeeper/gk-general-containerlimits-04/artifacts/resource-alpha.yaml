@@ -10,5 +10,5 @@ spec:
     name: container-alpha
     resources:
       limits:
-        cpu: 100m
-        memory: 256Mi
+        cpu: 200m
+        memory: 1Gi
