@@ -6,16 +6,12 @@ metadata:
   name: resource-beta
 spec:
   containers:
-  - args:
-    - run
-    - --server
-    - --addr=localhost:8080
-    image: nginx:latest
+  - image: nginx:latest
     name: container-beta
     resources:
       limits:
-        cpu: '4'
-        memory: 2Gi
+        cpu: 800m
+        memory: 512Mi
       requests:
         cpu: 100m
-        memory: 2Gi
+        memory: 100Mi

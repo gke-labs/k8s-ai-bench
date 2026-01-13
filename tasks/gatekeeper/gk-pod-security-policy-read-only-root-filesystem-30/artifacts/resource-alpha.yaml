@@ -10,3 +10,9 @@ spec:
     name: container-alpha
     securityContext:
       readOnlyRootFilesystem: true
+    volumeMounts:
+    - mountPath: /tmp
+      name: tmp-volume
+  volumes:
+  - emptyDir: {}
+    name: tmp-volume

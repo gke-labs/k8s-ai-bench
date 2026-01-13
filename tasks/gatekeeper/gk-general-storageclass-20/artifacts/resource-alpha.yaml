@@ -8,5 +8,5 @@ spec:
   resources:
     requests:
       storage: 8Gi
-  storageClassName: allowed-storage-class
+  storageClassName: somestorageclass
   volumeMode: Filesystem

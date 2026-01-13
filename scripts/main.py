@@ -46,10 +46,10 @@ def get_wait_command(manifest_str: str, namespace: str) -> list[str]:
                 continue
             kind = doc["kind"]
             name = doc["metadata"]["name"]
-            
+
             if kind in WAITABLE_KINDS:
                 condition = WAITABLE_KINDS[kind]
-                cmds.append(f"kubectl wait --for={condition} {kind.lower()}/{name} -n {namespace} --timeout=120s")
+                cmds.append(f"kubectl wait --for={condition} {kind.lower()}/{name} -n {namespace} --timeout=180s")
     except Exception:
         pass
     return cmds
@@ -143,63 +143,107 @@ def neutralize_manifest(manifest: str, suffix: str) -> str:
     return yaml.dump_all(docs, default_flow_style=False)
 
 def patch_manifest(manifest_str: str) -> str:
-    """Patch manifest to fix common issues using ONLY simple string replacements."""
+    """Patch manifest to fix common issues using YAML parsing for reliability."""
+    import re
+
     # 1. Text-based replacements for specific bad images
     manifest_str = manifest_str.replace("safe-images.com/nginx", "nginx:latest")
+    manifest_str = manifest_str.replace("safeimages.com/nginx", "nginx:latest")
     manifest_str = manifest_str.replace("openpolicyagent/opa:0.9.2", "nginx:latest")
     manifest_str = manifest_str.replace("openpolicyagent/opa", "nginx:latest")
     manifest_str = manifest_str.replace("localhost/custom", "runtime/default")
-    
-    # 3. For 'users' policy that enforces non-root, standard nginx fails to bind 80.
-    # We replace it with unprivileged nginx if we detect typical non-root user IDs (e.g. 100-200 range often used in samples).
-    # Or just globally for safety in these benchmarks?
-    # Simple string replace: if we see "runAsUser: 199" (common in samples), we might want unprivileged image.
-    # Actually, simpler: just replace "image: nginx" with "image: nginxinc/nginx-unprivileged:latest" if it's not "nginx:latest"
-    # But we replaced others with "nginx:latest" above.
-    # Let's just always swap "image: nginx\n" (bare) with unprivileged?
-    # Or better: "image: nginx" -> "image: nginxinc/nginx-unprivileged:latest"
-    # Note: "nginx:latest" from previous replaces will be skipped if we target "image: nginx" specifically without tag,
-    # OR if we do this BEFORE the "nginx:latest" replacements? No, the samples usually have "image: nginx" or "image: openpolicyagent/opa".
-    
-    # Let's do it specifically for the case where we see runAsUser? We can't conditionally replace easily with string replace.
-    # Let's just use nginx-unprivileged for EVERYTHING that was "nginx" (without tag) in the original samples?
-    # Most samples use "image: nginx".
-    
+    # Fix invalid/non-existent images
+    manifest_str = manifest_str.replace("nginx-exempt", "nginx:latest")
+    manifest_str = manifest_str.replace("unnginx:latest", "nginx:latest")
+    manifest_str = manifest_str.replace("nginx:latest:latest", "nginx:latest")  # Double tag
+    manifest_str = manifest_str.replace("image: exempt", "image: nginx:latest")
+
+    # 2. Use nginx-unprivileged for non-root contexts
     manifest_str = manifest_str.replace("image: nginx\n", "image: nginxinc/nginx-unprivileged:latest\n")
-    # Also handle the ones we just swapped? No, those became "nginx:latest".
-    # If the sample has "image: nginx:latest", this won't catch it. 
-    # But we want to fix `users-34` which had `image: nginx`.
-    
-    return manifest_str
-    # We remove common patterns of args seen in the samples.
-    # We replace them with a dummy list item to preserve YAML list structure if args was the first item.
-    
-    # Block 1: Indented 2 spaces
-    manifest_str = manifest_str.replace("""  - args:
-    - run
-    - --server
-    - --addr=localhost:8080""", """  - # args removed""")
 
-    # Block 2: Indented 4 spaces
-    manifest_str = manifest_str.replace("""    - args:
-      - run
-      - --server
-      - --addr=localhost:8080""", """    - # args removed""")
+    # 3. Parse YAML for more complex fixes
+    try:
+        docs = list(yaml.safe_load_all(manifest_str))
+        modified = False
+        for doc in docs:
+            if not doc or "spec" not in doc:
+                continue
 
-    # Block 3: Single line flow style (2 spaces)
-    manifest_str = manifest_str.replace("""  - args: ["run", "--server", "--addr=localhost:8080"]""", """  - # args removed""")
+            # Check if any container has readOnlyRootFilesystem: true
+            needs_tmp_volume = False
+            for key in ["containers", "initContainers"]:
+                containers = doc.get("spec", {}).get(key, [])
+                if not isinstance(containers, list):
+                    continue
+                for container in containers:
+                    # Remove args that look like OPA server args
+                    if "args" in container:
+                        args = container["args"]
+                        if isinstance(args, list) and any("--server" in str(a) or "--addr" in str(a) for a in args):
+                            del container["args"]
+                            modified = True
+                        elif isinstance(args, list) and "run" in args:
+                            del container["args"]
+                            modified = True
 
-    # Block 4: Single line flow style (4 spaces)
-    manifest_str = manifest_str.replace("""    - args: ["run", "--server", "--addr=localhost:8080"]""", """    - # args removed""")
+                    # Check for readOnlyRootFilesystem
+                    sc = container.get("securityContext", {})
 
-    # Block 5: No indentation (unlikely for containers but possible in some contexts)
-    manifest_str = manifest_str.replace("""- args: ["run", "--server", "--addr=localhost:8080"]""", """- # args removed""")
-    
-    # Block 6: No indentation block
-    manifest_str = manifest_str.replace("""- args:
-      - run
-      - --server
-      - --addr=localhost:8080""", """- # args removed""")
+                    # Fix localhost seccomp profiles that don't exist on standard clusters
+                    if "seccompProfile" in sc:
+                        profile = sc["seccompProfile"]
+                        if profile.get("type") == "Localhost":
+                            # Change to RuntimeDefault since localhost profiles aren't available
+                            profile["type"] = "RuntimeDefault"
+                            profile.pop("localhostProfile", None)
+                            modified = True
+
+                    # Scale down large memory requests/limits to fit on kind clusters
+                    resources = container.get("resources", {})
+                    for res_type in ["requests", "limits"]:
+                        res = resources.get(res_type, {})
+                        if "memory" in res:
+                            mem = res["memory"]
+                            # Convert Gi to Mi if >= 1Gi
+                            if isinstance(mem, str) and "Gi" in mem:
+                                try:
+                                    gi_val = float(mem.replace("Gi", ""))
+                                    if gi_val >= 1:
+                                        # Scale down by 4x (2Gi -> 512Mi)
+                                        new_val = int(gi_val * 256)
+                                        res["memory"] = f"{new_val}Mi"
+                                        modified = True
+                                except ValueError:
+                                    pass
+
+                    if sc.get("readOnlyRootFilesystem") == True:
+                        needs_tmp_volume = True
+                        # Add volumeMount for /tmp
+                        if "volumeMounts" not in container:
+                            container["volumeMounts"] = []
+                        # Check if /tmp mount already exists
+                        if not any(vm.get("mountPath") == "/tmp" for vm in container["volumeMounts"]):
+                            container["volumeMounts"].append({
+                                "name": "tmp-volume",
+                                "mountPath": "/tmp"
+                            })
+                            modified = True
+
+            # Add emptyDir volume for /tmp if needed
+            if needs_tmp_volume:
+                if "volumes" not in doc["spec"]:
+                    doc["spec"]["volumes"] = []
+                if not any(v.get("name") == "tmp-volume" for v in doc["spec"]["volumes"]):
+                    doc["spec"]["volumes"].append({
+                        "name": "tmp-volume",
+                        "emptyDir": {}
+                    })
+                    modified = True
+
+        if modified:
+            manifest_str = yaml.dump_all(docs, default_flow_style=False)
+    except Exception:
+        pass  # If YAML parsing fails, return original
 
     return manifest_str
 
@@ -280,8 +324,10 @@ def generate_benchmark(policy_name: str, category: str, sample: dict, idx: int):
 set -e
 kubectl delete namespace {namespace} --ignore-not-found --wait=true
 kubectl create namespace {namespace}
-{extra_setup}kubectl apply -f artifacts/resource-alpha.yaml -n {namespace}
+{extra_setup}sleep 2  # Allow namespace to stabilize
+kubectl apply -f artifacts/resource-alpha.yaml -n {namespace}
 kubectl apply -f artifacts/resource-beta.yaml -n {namespace}
+sleep 3  # Allow pods to be scheduled
 {wait_block}
 """
     (task_dir / "setup.sh").write_text(setup)

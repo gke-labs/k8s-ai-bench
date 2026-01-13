@@ -6,8 +6,8 @@ metadata:
   name: resource-alpha
 spec:
   containers:
-  - image: nginxinc/nginx-unprivileged:latest
+  - image: nginx:latest
     name: container-alpha
     securityContext:
       seccompProfile:
-        type: RuntimeDefault
+        type: Unconfined

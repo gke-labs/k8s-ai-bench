@@ -1,6 +1,10 @@
 apiVersion: v1
-kind: Namespace
+kind: Pod
 metadata:
   labels:
-    owner: user.agilebank.demo
+    pizza: is-great
   name: resource-alpha
+spec:
+  containers:
+  - image: nginxinc/nginx-unprivileged:latest
+    name: container-alpha

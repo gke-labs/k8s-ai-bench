@@ -1,7 +1,7 @@
 apiVersion: constraints.gatekeeper.sh/v1beta1
 kind: K8sStorageClass
 metadata:
-  name: allowed-storageclass
+  name: storageclass
 spec:
   match:
     kinds:
@@ -11,5 +11,3 @@ spec:
         kinds: ["StatefulSet"]
   parameters:
     includeStorageClassesInMessage: true
-    allowedStorageClasses:
-      - allowed-storage-class

@@ -4,9 +4,5 @@ metadata:
   name: resource-beta
 spec:
   containers:
-  - args:
-    - run
-    - --server
-    - --addr=localhost:8080
-    image: nginx:latest:latest
+  - image: nginx:latest
     name: container-beta

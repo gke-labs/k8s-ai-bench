@@ -8,5 +8,5 @@ spec:
   resources:
     requests:
       storage: 8Gi
-  storageClassName: disallowed-storage-class
+  storageClassName: badstorageclass
   volumeMode: Filesystem

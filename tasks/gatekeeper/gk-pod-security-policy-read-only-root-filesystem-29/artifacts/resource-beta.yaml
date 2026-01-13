@@ -6,7 +6,7 @@ metadata:
   name: resource-beta
 spec:
   containers:
-  - image: unnginx:latest
+  - image: nginx:latest
     name: container-beta
     securityContext:
       readOnlyRootFilesystem: false

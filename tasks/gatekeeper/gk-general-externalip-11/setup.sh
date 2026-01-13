@@ -2,7 +2,9 @@
 set -e
 kubectl delete namespace gk-test-011 --ignore-not-found --wait=true
 kubectl create namespace gk-test-011
+sleep 2  # Allow namespace to stabilize
 kubectl apply -f artifacts/resource-alpha.yaml -n gk-test-011
 kubectl apply -f artifacts/resource-beta.yaml -n gk-test-011
+sleep 3  # Allow pods to be scheduled
 echo "Resources deployed. Waiting for readiness..."
 sleep 3

@@ -6,16 +6,12 @@ metadata:
   name: resource-alpha
 spec:
   containers:
-  - args:
-    - run
-    - --server
-    - --addr=localhost:8080
-    image: nginx:latest
+  - image: nginx:latest
     name: container-alpha
     resources:
       limits:
-        cpu: '4'
-        memory: 2Gi
+        cpu: 200m
+        memory: 200Mi
       requests:
-        cpu: '1'
-        memory: 2Gi
+        cpu: 100m
+        memory: 100Mi
