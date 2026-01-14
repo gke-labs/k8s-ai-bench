@@ -19,3 +19,6 @@ trace.log
 
 # Build artifacts
 .build/
+
+# kubeconfig
+kubeconfig.yaml

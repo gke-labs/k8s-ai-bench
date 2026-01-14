@@ -110,6 +110,8 @@ type EvalConfig struct {
 	AgentBin              string
 	Concurrency           int
 	ClusterCreationPolicy ClusterCreationPolicy
+	ClusterProvider       string
+	HostClusterContext    string
 
 	OutputDir string
 }
@@ -208,6 +210,8 @@ func runEvals(ctx context.Context) error {
 	enableToolUseShim := false
 	quiet := true
 	mcpClient := false
+	clusterProvider := "kind"
+	hostClusterContext := ""
 
 	flag.StringVar(&config.TasksDir, "tasks-dir", config.TasksDir, "Directory containing evaluation tasks")
 	flag.StringVar(&config.KubeConfig, "kubeconfig", config.KubeConfig, "Path to kubeconfig file")
@@ -221,7 +225,13 @@ func runEvals(ctx context.Context) error {
 	flag.StringVar((*string)(&config.ClusterCreationPolicy), "cluster-creation-policy", string(CreateIfNotExist), "Cluster creation policy: AlwaysCreate, CreateIfNotExist, DoNotCreate")
 	flag.StringVar(&config.OutputDir, "output-dir", config.OutputDir, "Directory to write results to")
 	flag.BoolVar(&mcpClient, "mcp-client", mcpClient, "Enable MCP client in kubectl-ai")
+	flag.StringVar(&config.ClusterProvider, "cluster-provider", clusterProvider, "Cluster provider to use (kind or vcluster)")
+	flag.StringVar(&config.HostClusterContext, "host-cluster-context", hostClusterContext, "Host cluster context for vcluster (optional)")
 	flag.Parse()
+
+	if config.ClusterProvider == "vcluster" && config.HostClusterContext == "" {
+		return fmt.Errorf("--host-cluster-context is required when using --cluster-provider=vcluster")
+	}
 
 	if config.KubeConfig == "" {
 		config.KubeConfig = defaultKubeConfig
