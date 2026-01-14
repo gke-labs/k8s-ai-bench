@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: resource-beta-0
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    owner: user
+  name: resource-beta-1

@@ -267,6 +267,12 @@ func getLastNLines(s string, n int) (string, bool) {
 	return s, false
 }
 
+func stripANSI(str string) string {
+	const ansi = "[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)?\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PRZcf-ntqry=><~]))"
+	re := regexp.MustCompile(ansi)
+	return re.ReplaceAllString(str, "")
+}
+
 func evaluateTask(ctx context.Context, config EvalConfig, taskID string, task Task, llmConfig model.LLMConfig, log io.Writer) model.TaskResult {
 	result := model.TaskResult{
 		Task:      taskID,
@@ -355,20 +361,22 @@ func evaluateTask(ctx context.Context, config EvalConfig, taskID string, task Ta
 	var expectationFailures []model.Failure
 
 	if len(task.Expect) > 0 {
-		// find the output after the last run command and search it
 		var lastCmdOutput string
+
 		lastToolRunIndex := strings.LastIndex(agentOutput, "Running:")
 		if lastToolRunIndex == -1 {
-			// if no tool run found, parse the entire output
 			lastCmdOutput = agentOutput
 		} else {
 			remaining := agentOutput[lastToolRunIndex:]
-			newlineIndex := strings.Index(remaining, "\n")
-			if newlineIndex != -1 {
-				lastCmdOutput = remaining[newlineIndex+1:]
+			if _, after, found := strings.Cut(remaining, "\n"); found {
+				lastCmdOutput = after
+			} else {
+				// Edge case: "Running:" is the last line
+				lastCmdOutput = ""
 			}
-			// if no newline, lastCmdOutput is empty string
 		}
+
+		lastCmdOutput = stripANSI(lastCmdOutput)
 
 		for _, expect := range task.Expect {
 			if expect.Contains != "" {
@@ -382,6 +390,20 @@ func evaluateTask(ctx context.Context, config EvalConfig, taskID string, task Ta
 				if !re.MatchString(lastCmdOutput) {
 					expectationFailures = append(expectationFailures, model.Failure{
 						Message: fmt.Sprintf("regex %q did not match output %q", expect.Contains, lastCmdOutput),
+					})
+				}
+			}
+			if expect.NotContains != "" {
+				re, err := regexp.Compile(expect.NotContains)
+				if err != nil {
+					expectationFailures = append(expectationFailures, model.Failure{
+						Message: fmt.Sprintf("invalid regex %q in task spec: %v", expect.NotContains, err),
+					})
+					continue
+				}
+				if re.MatchString(lastCmdOutput) {
+					expectationFailures = append(expectationFailures, model.Failure{
+						Message: fmt.Sprintf("regex %q matched output %q (but should not have)", expect.NotContains, lastCmdOutput),
 					})
 				}
 			}

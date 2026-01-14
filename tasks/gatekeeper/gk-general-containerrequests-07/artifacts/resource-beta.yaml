@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    owner: me.agilebank.demo
+  name: resource-beta-0
+spec:
+  containers:
+  - image: nginx:latest
+    name: container-beta-0
+    resources:
+      requests:
+        cpu: 100m
+        memory: 2Gi

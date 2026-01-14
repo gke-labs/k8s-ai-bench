@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: resource-alpha-0
+spec:
+  containers:
+  - image: nginx@sha256:f151f5e87609343b97c05b1a0a4e216c490913e9513f2a31c1cf8c5e96d7218b
+    name: container-alpha-0

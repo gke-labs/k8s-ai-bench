@@ -19,3 +19,4 @@ trace.log
 
 # Build artifacts
 .build/
+.gatekeeper-library
