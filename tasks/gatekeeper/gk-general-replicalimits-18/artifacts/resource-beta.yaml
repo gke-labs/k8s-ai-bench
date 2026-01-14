@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: resource-beta-0
+spec:
+  replicas: 100
+  selector:
+    matchLabels:
+      app: app-beta
+  template:
+    metadata:
+      labels:
+        app: app-beta
+    spec:
+      containers:
+      - image: nginx:1.14.2
+        name: nginx
+        ports:
+        - containerPort: 80

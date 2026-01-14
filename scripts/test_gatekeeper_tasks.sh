@@ -21,8 +21,13 @@ for task_dir in $(ls -d "$TASKS_DIR"/gk-* | sort); do
 
     cd "$task_dir"
 
-    # Run setup.sh with timeout (use gtimeout on macOS)
-    if gtimeout $TIMEOUT ./setup.sh > setup_output.log 2>&1; then
+    # Run setup.sh with timeout
+    TIMEOUT_CMD="timeout"
+    if command -v gtimeout &> /dev/null; then
+        TIMEOUT_CMD="gtimeout"
+    fi
+
+    if $TIMEOUT_CMD $TIMEOUT ./setup.sh > setup_output.log 2>&1; then
         setup_status="PASS"
     else
         setup_status="FAIL (exit $?)"

@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    pizza: is-great
+  name: resource-alpha-0
+spec:
+  containers:
+  - image: nginx
+    name: container-alpha-0

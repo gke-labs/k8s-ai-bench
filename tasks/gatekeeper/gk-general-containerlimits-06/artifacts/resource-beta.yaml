@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    owner: me.agilebank.demo
+  name: resource-beta-0
+spec:
+  containers:
+  - image: nginx:latest # Changed image to nginx to pass basic validation. Policy requires cpu limit of 200m, so we provide 100m, keeping it non-compliant. Using 'latest' tag for broader compatibility.
+    name: container-beta-0
+    resources:
+      limits:
+        cpu: 100m # Violates the policy - limit should be 200m
+        memory: 2Gi # Exceeds policy requirement of 1Gi
+      requests:
+        cpu: 50m
+        memory: 1Gi

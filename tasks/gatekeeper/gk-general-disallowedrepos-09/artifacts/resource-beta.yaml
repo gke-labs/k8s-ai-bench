@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: resource-beta-0
+spec:
+  containers:
+  - image: k8s.gcr.io/kustomize/kustomize:v3.8.9
+    name: container-beta-0
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: resource-beta-1
+spec:
+  containers:
+  - image: registry.k8s.io/kustomize/kustomize:v3.8.9
+    name: container-beta-1
+  initContainers:
+  - image: k8s.gcr.io/kustomize/kustomize:v3.8.9
+    name: init-container-beta-1

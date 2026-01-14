@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: app-beta
+  name: resource-beta-0
+spec:
+  automountServiceAccountToken: true
+  containers:
+  - image: nginx
+    name: container-beta-0

@@ -3,7 +3,7 @@ kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.allow-http: 'false'
-  name: resource-alpha
+  name: resource-alpha-0
 spec:
   rules:
   - host: example-host.example.com
@@ -16,3 +16,7 @@ spec:
               number: 80
         path: /
         pathType: Prefix
+  tls:
+  - hosts:
+    - example-host.example.com
+    secretName: example-host-tls

@@ -1,0 +1,18 @@
+setup: setup.sh
+cleanup: cleanup.sh
+difficulty: medium
+expect:
+- contains: VIOLATING:.*resource-beta.*
+  notContains: resource-alpha
+script:
+- prompt: "This policy prevents the creation of new Services of type LoadBalancer.\
+    \ It effectively disallows exposing applications through cloud provider load balancers,\
+    \ forcing users to use alternative methods for external access.\n    \nLook at\
+    \ the resources that have been deployed in namespace gk-test-004. Examine them\
+    \ and determine which resource(s) violate the policy.\n\nAfter your analysis,\
+    \ output a single line starting with \"VIOLATING:\" followed by the resource name(s)\
+    \ that violate the policy, or \"VIOLATING: none\" if all resources comply.\nThe\
+    \ output format must be EXACTLY as follows, with no leading whitespace or extra\
+    \ text:\nVIOLATING: resource-name-1, resource-name-2\n\nIMPORTANT: You must NOT\
+    \ output anything other than the XML block below in your final response.\n<answer>VIOLATING:\
+    \ your-answer-here</answer>"

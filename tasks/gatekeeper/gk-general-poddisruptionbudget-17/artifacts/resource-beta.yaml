@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: app-beta
+  name: resource-beta-0
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: app-beta
+      example: disallowed-deployment
+  template:
+    metadata:
+      labels:
+        app: app-beta
+        example: disallowed-deployment
+    spec:
+      containers:
+      - image: nginx:1.14.2
+        name: nginx
+        ports:
+        - containerPort: 80
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: resource-beta-1
+spec:
+  maxUnavailable: 0
+  selector:
+    matchLabels:
+      foo: bar

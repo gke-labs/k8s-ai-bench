@@ -2,14 +2,17 @@ setup: setup.sh
 cleanup: cleanup.sh
 difficulty: medium
 expect:
-- answer: 'VIOLATING: resource-beta'
+- contains: VIOLATING:.*resource-beta.*
+  notContains: resource-alpha
 script:
-- prompt: "This policy prohibits the creation of ClusterRoleBindings and RoleBindings\
-    \ that grant permissions to anonymous users. It allows the binding of roles to\
-    \ specific, named roles defined in the `allowedRoles` parameter such as `cluster-role-1`.\n\
-    \    \nLook at the resources that have been deployed in namespace gk-test-008.\
-    \ Examine them and determine which resource(s) violate the policy.\n\nAfter your\
-    \ analysis, output a single line starting with \"VIOLATING:\" followed by the\
-    \ resource name(s) that violate the policy, or \"VIOLATING: none\" if all resources\
-    \ comply.\nIMPORTANT: You must NOT output anything other than the XML block below\
-    \ in your final response.\n<answer>VIOLATING: your-answer-here</answer>"
+- prompt: "This policy prohibits the assignment of any roles to anonymous users. \
+    \ However, it allows role assignments to roles specified in `allowedRoles` like\
+    \ `cluster-role-1` even if the role might permit anonymous access.\n    \nLook\
+    \ at the resources that have been deployed in namespace gk-test-008. Examine them\
+    \ and determine which resource(s) violate the policy.\n\nAfter your analysis,\
+    \ output a single line starting with \"VIOLATING:\" followed by the resource name(s)\
+    \ that violate the policy, or \"VIOLATING: none\" if all resources comply.\nThe\
+    \ output format must be EXACTLY as follows, with no leading whitespace or extra\
+    \ text:\nVIOLATING: resource-name-1, resource-name-2\n\nIMPORTANT: You must NOT\
+    \ output anything other than the XML block below in your final response.\n<answer>VIOLATING:\
+    \ your-answer-here</answer>"

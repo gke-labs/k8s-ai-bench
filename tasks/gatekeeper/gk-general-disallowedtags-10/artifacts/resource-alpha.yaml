@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: resource-alpha-0
+spec:
+  containers:
+  - image: openpolicyagent/opa:0.9.2
+    name: container-alpha-0

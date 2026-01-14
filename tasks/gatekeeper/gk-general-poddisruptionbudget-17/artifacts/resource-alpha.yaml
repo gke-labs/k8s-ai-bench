@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: app-alpha
+  name: resource-alpha-0
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: app-alpha
+      example: allowed-deployment-1
+  template:
+    metadata:
+      labels:
+        app: app-alpha
+        example: allowed-deployment-1
+    spec:
+      containers:
+      - image: nginx:1.14.2
+        name: nginx
+        ports:
+        - containerPort: 80
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: app-alpha
+  name: resource-alpha-1
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: app-alpha
+      example: allowed-deployment-2
+  template:
+    metadata:
+      labels:
+        app: app-alpha
+        example: allowed-deployment-2
+    spec:
+      containers:
+      - image: nginx:1.14.2
+        name: nginx
+        ports:
+        - containerPort: 80
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: app-alpha
+  name: resource-alpha-2
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: app-alpha
+      example: allowed-deployment-3
+  template:
+    metadata:
+      labels:
+        app: app-alpha
+        example: allowed-deployment-3
+    spec:
+      containers:
+      - image: nginx:1.14.2
+        name: nginx
+        ports:
+        - containerPort: 80
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: app-alpha
+  name: resource-alpha-3
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-alpha
+      example: allowed-deployment-4
+  template:
+    metadata:
+      labels:
+        app: app-alpha
+        example: allowed-deployment-4
+    spec:
+      containers:
+      - image: nginx:1.14.2
+        name: nginx
+        ports:
+        - containerPort: 80
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: resource-alpha-4
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      foo: bar

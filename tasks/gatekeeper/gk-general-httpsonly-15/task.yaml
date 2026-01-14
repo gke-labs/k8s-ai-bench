@@ -1,0 +1,17 @@
+setup: setup.sh
+cleanup: cleanup.sh
+difficulty: medium
+expect:
+- contains: VIOLATING:.*resource-beta.*
+  notContains: resource-alpha
+script:
+- prompt: "This policy requires that all Ingress resources use HTTPS.  It allows Ingress\
+    \ resources to optionally define TLS configurations; the policy does not enforce\
+    \ whether TLS is required or not.\n    \nLook at the resources that have been\
+    \ deployed in namespace gk-test-015. Examine them and determine which resource(s)\
+    \ violate the policy.\n\nAfter your analysis, output a single line starting with\
+    \ \"VIOLATING:\" followed by the resource name(s) that violate the policy, or\
+    \ \"VIOLATING: none\" if all resources comply.\nThe output format must be EXACTLY\
+    \ as follows, with no leading whitespace or extra text:\nVIOLATING: resource-name-1,\
+    \ resource-name-2\n\nIMPORTANT: You must NOT output anything other than the XML\
+    \ block below in your final response.\n<answer>VIOLATING: your-answer-here</answer>"
