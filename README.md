@@ -10,7 +10,7 @@ The leaderboard shows run results for widely used proprietary and open models ov
 
 * **Pass@1**: Can the agent solve the task on the first try? This measures raw capability and immediate correctness.
 * **Pass@5**: Can the agent solve the task at least once in 5 attempts? This shows if the agent can eventually find a solution.
-* **Pass All 5**: Does the agent solve the task every single time? This measures reliability and consistency, which is crucial for autonomous usage.
+* **Pass^5**: Does the agent solve the task every single time? This measures reliability and consistency, which is crucial for autonomous usage.
 
 
 

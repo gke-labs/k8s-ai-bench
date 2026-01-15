@@ -170,7 +170,7 @@ function processData(rawData) {
         const tasksMap = grouped[model];
         const p1s = [];
         const p5s = [];
-        let passAllCount = 0;
+        const pPow5s = [];
         let totalRuns = 0;
         const mRows = [];
 
@@ -181,7 +181,7 @@ function processData(rawData) {
             totalRuns += n;
             p1s.push(passAtK(n, c, 1));
             p5s.push(passAtK(n, c, 5));
-            if (n > 0 && c === n) passAllCount++;
+            if (n > 0) pPow5s.push(Math.pow(c / n, 5) * 100);
 
             items.forEach((item, idx) => {
                 mRows.push({
@@ -195,15 +195,15 @@ function processData(rawData) {
 
         const avgP1 = p1s.length ? p1s.reduce((a, b) => a + b, 0) / p1s.length : 0;
         const avgP5 = p5s.length ? p5s.reduce((a, b) => a + b, 0) / p5s.length : 0;
+        const avgPPow5 = pPow5s.length ? pPow5s.reduce((a, b) => a + b, 0) / pPow5s.length : 0;
         const taskCount = Object.keys(tasksMap).length;
-        const pAll = taskCount ? (passAllCount / taskCount) * 100 : 0;
 
         leaderboard.push({
             id: model,
             type: getModelType(model),
             p1: parseFloat(avgP1.toFixed(1)),
             p5: parseFloat(avgP5.toFixed(1)),
-            pAll: parseFloat(pAll.toFixed(1)),
+            pPow5: parseFloat(avgPPow5.toFixed(1)),
             runs: totalRuns,
             tasks: taskCount
         });
