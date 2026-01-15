@@ -38,17 +38,19 @@ import (
 
 func runEvaluation(ctx context.Context, config EvalConfig) error {
 	logger := klog.FromContext(ctx)
+
+	var clusterProvider cluster.Provider
+	switch config.ClusterProvider {
+	case "kind":
+		clusterProvider = kind.New()
+	case "vcluster":
+		clusterProvider = vcluster.New(config.HostClusterContext)
+	default:
+		return fmt.Errorf("unknown cluster provider: %s", config.ClusterProvider)
+	}
+
 	if config.ClusterCreationPolicy != DoNotCreate {
 		clusterName := "k8s-ai-bench-eval"
-		var clusterProvider cluster.Provider
-		switch config.ClusterProvider {
-		case "kind":
-			clusterProvider = kind.New()
-		case "vcluster":
-			clusterProvider = vcluster.New(config.HostClusterContext)
-		default:
-			return fmt.Errorf("unknown cluster provider: %s", config.ClusterProvider)
-		}
 
 		clusterExists, err := clusterProvider.Exists(clusterName)
 		if err != nil {
@@ -165,7 +167,7 @@ func runEvaluation(ctx context.Context, config EvalConfig) error {
 					start := time.Now()
 					fmt.Printf("\033[36mWorker %d: Started %s for %s\033[0m\n", workerID, llmConfig.ID, job.taskID)
 
-					result := evaluateTask(ctx, config, job.taskID, job.task, llmConfig, log)
+					result := evaluateTask(ctx, config, job.taskID, job.task, llmConfig, clusterProvider, log)
 
 					fmt.Printf("\033[32mWorker %d: Completed %s for %s in %s\033[0m\n",
 						workerID,
@@ -280,7 +282,7 @@ func getLastNLines(s string, n int) (string, bool) {
 	return s, false
 }
 
-func evaluateTask(ctx context.Context, config EvalConfig, taskID string, task Task, llmConfig model.LLMConfig, log io.Writer) model.TaskResult {
+func evaluateTask(ctx context.Context, config EvalConfig, taskID string, task Task, llmConfig model.LLMConfig, clusterProvider cluster.Provider, log io.Writer) model.TaskResult {
 	result := model.TaskResult{
 		Task:      taskID,
 		LLMConfig: llmConfig,
@@ -318,13 +320,12 @@ func evaluateTask(ctx context.Context, config EvalConfig, taskID string, task Ta
 		task:          &task,
 		taskID:        taskID,
 		taskOutputDir: taskOutputDir,
+		clusterProvider: clusterProvider,
 	}
 
+	// Set the isolation mode to cluster if vcluster is used.
 	if config.ClusterProvider == "vcluster" {
-		x.clusterProvider = vcluster.New(config.HostClusterContext)
 		x.task.Isolation = IsolationModeCluster
-	} else {
-		x.clusterProvider = kind.New()
 	}
 
 	taskDir := filepath.Join(config.TasksDir, taskID)

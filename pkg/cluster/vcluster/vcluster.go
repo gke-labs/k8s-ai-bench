@@ -108,5 +108,10 @@ func (p *Provider) GetKubeconfig(name string) ([]byte, error) {
 		args = append(args, "--context", p.HostContext)
 	}
 	
-	return exec.Command("vcluster", args...).Output()
+	config, err := exec.Command("vcluster", args...).Output()
+
+	// Wait 60 secs for the local background proxy on docker to be running.
+	exec.Command("sleep", "60").Run()
+
+	return config, err
 }
