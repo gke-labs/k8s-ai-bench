@@ -51,7 +51,7 @@ func runEvaluation(ctx context.Context, config EvalConfig) error {
 			return fmt.Errorf("failed to create vcluster provider: %w", err)
 		}
 		defer cleanup()
-	default:	
+	default:
 		return fmt.Errorf("unknown cluster provider: %s", config.ClusterProvider)
 	}
 
