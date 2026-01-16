@@ -20,7 +20,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -111,6 +110,9 @@ type EvalConfig struct {
 	AgentBin              string
 	Concurrency           int
 	ClusterCreationPolicy ClusterCreationPolicy
+	ClusterProvider       string
+	HostClusterContext    string
+	HostClusterKubeConfig string
 
 	OutputDir string
 }
@@ -154,49 +156,6 @@ func printUsage() {
 	fmt.Fprintf(os.Stderr, "  run       Run evaluation benchmarks\n")
 	fmt.Fprintf(os.Stderr, "  analyze   Analyze results from previous benchmark runs\n\n")
 	fmt.Fprintf(os.Stderr, "Run '%s <command> --help' for more information on a command.\n", os.Args[0])
-}
-
-func kindClusterExists(clusterName string) (bool, error) {
-	cmd := exec.Command("kind", "get", "clusters")
-	output, err := cmd.Output()
-	if err != nil {
-		return false, fmt.Errorf("failed to run 'kind get clusters': %w", err)
-	}
-	clusters := strings.Split(string(output), "\n")
-	for _, cluster := range clusters {
-		if cluster == clusterName {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-func createKindCluster(clusterName string) error {
-	var createErr error
-	for retry := range 3 {
-		if retry > 0 {
-			fmt.Printf("Retrying cluster creation, attempt %d\n", retry+1)
-			time.Sleep(5 * time.Second)
-		}
-		createCmd := exec.Command("kind", "create", "cluster", "--name", clusterName, "--wait", "5m")
-		fmt.Printf("Creating kind cluster %q\n", clusterName)
-		createCmd.Stdout = os.Stdout
-		createCmd.Stderr = os.Stderr
-		createErr = createCmd.Run()
-		if createErr == nil {
-			return nil
-		}
-		fmt.Printf("failed to create kind cluster, retrying...: %v\n", createErr)
-	}
-	return fmt.Errorf("failed to create kind cluster after multiple retries: %w", createErr)
-}
-
-func deleteKindCluster(clusterName string) error {
-	deleteCmd := exec.Command("kind", "delete", "cluster", "--name", clusterName)
-	fmt.Printf("Deleting kind cluster %q\n", clusterName)
-	deleteCmd.Stdout = os.Stdout
-	deleteCmd.Stderr = os.Stderr
-	return deleteCmd.Run()
 }
 
 type Strings []string
@@ -252,6 +211,8 @@ func runEvals(ctx context.Context) error {
 	enableToolUseShim := false
 	quiet := true
 	mcpClient := false
+	clusterProvider := "kind"
+	hostClusterContext := ""
 
 	flag.StringVar(&config.TasksDir, "tasks-dir", config.TasksDir, "Directory containing evaluation tasks")
 	flag.StringVar(&config.KubeConfig, "kubeconfig", config.KubeConfig, "Path to kubeconfig file")
@@ -265,7 +226,18 @@ func runEvals(ctx context.Context) error {
 	flag.StringVar((*string)(&config.ClusterCreationPolicy), "cluster-creation-policy", string(CreateIfNotExist), "Cluster creation policy: AlwaysCreate, CreateIfNotExist, DoNotCreate")
 	flag.StringVar(&config.OutputDir, "output-dir", config.OutputDir, "Directory to write results to")
 	flag.BoolVar(&mcpClient, "mcp-client", mcpClient, "Enable MCP client in kubectl-ai")
+	flag.StringVar(&config.ClusterProvider, "cluster-provider", clusterProvider, "Cluster provider to use (kind or vcluster)")
+	flag.StringVar(&config.HostClusterContext, "host-cluster-context", hostClusterContext, "Host cluster context for vcluster (optional)")
+	flag.StringVar(&config.HostClusterKubeConfig, "host-cluster-kubeconfig", "", "Host cluster kubeconfig for vcluster (optional, defaults to --kubeconfig)")
 	flag.Parse()
+
+	if config.ClusterProvider == "vcluster" {
+		if config.HostClusterContext == "" {
+			return fmt.Errorf("--host-cluster-context is required when using --cluster-provider=vcluster")
+		}
+		fmt.Println("When using vCluster as cluster provider, defaulting cluster-creation-policy to DoNotCreate")
+		config.ClusterCreationPolicy = DoNotCreate
+	}
 
 	if config.KubeConfig == "" {
 		config.KubeConfig = defaultKubeConfig
@@ -276,6 +248,16 @@ func runEvals(ctx context.Context) error {
 		return fmt.Errorf("failed to expand kubeconfig path %q: %w", config.KubeConfig, err)
 	}
 	config.KubeConfig = expandedKubeconfig
+
+	if config.HostClusterKubeConfig == "" {
+		config.HostClusterKubeConfig = config.KubeConfig
+	} else {
+		expandedHostKubeconfig, err := expandPath(config.HostClusterKubeConfig)
+		if err != nil {
+			return fmt.Errorf("failed to expand host cluster kubeconfig path %q: %w", config.HostClusterKubeConfig, err)
+		}
+		config.HostClusterKubeConfig = expandedHostKubeconfig
+	}
 
 	defaultModels := map[string][]string{
 		"gemini": {"gemini-2.5-pro"},

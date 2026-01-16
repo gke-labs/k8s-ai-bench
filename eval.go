@@ -28,6 +28,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gke-labs/k8s-ai-bench/pkg/cluster"
+	"github.com/gke-labs/k8s-ai-bench/pkg/cluster/kind"
+	"github.com/gke-labs/k8s-ai-bench/pkg/cluster/vcluster"
 	"github.com/gke-labs/k8s-ai-bench/pkg/model"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/yaml"
@@ -35,33 +38,51 @@ import (
 
 func runEvaluation(ctx context.Context, config EvalConfig) error {
 	logger := klog.FromContext(ctx)
+
+	var clusterProvider cluster.Provider
+	switch config.ClusterProvider {
+	case "kind":
+		clusterProvider = kind.New()
+	case "vcluster":
+		var cleanup func()
+		var err error
+		clusterProvider, cleanup, err = vcluster.New(config.HostClusterContext, config.HostClusterKubeConfig)
+		if err != nil {
+			return fmt.Errorf("failed to create vcluster provider: %w", err)
+		}
+		defer cleanup()
+	default:
+		return fmt.Errorf("unknown cluster provider: %s", config.ClusterProvider)
+	}
+
 	if config.ClusterCreationPolicy != DoNotCreate {
 		clusterName := "k8s-ai-bench-eval"
-		clusterExists, err := kindClusterExists(clusterName)
+
+		clusterExists, err := clusterProvider.Exists(clusterName)
 		if err != nil {
-			return fmt.Errorf("failed to check if kind cluster exists: %w", err)
+			return fmt.Errorf("failed to check if cluster exists: %w", err)
 		}
 
 		if config.ClusterCreationPolicy == AlwaysCreate && clusterExists {
-			logger.Info("Deleting existing kind cluster for evaluation run", "name", clusterName)
-			if err := deleteKindCluster(clusterName); err != nil {
-				return fmt.Errorf("failed to delete existing kind cluster: %w", err)
+			logger.Info("Deleting existing cluster for evaluation run", "name", clusterName, "provider", config.ClusterProvider)
+			if err := clusterProvider.Delete(clusterName); err != nil {
+				return fmt.Errorf("failed to delete existing cluster: %w", err)
 			}
 			clusterExists = false
 		}
 
 		if !clusterExists {
-			logger.Info("Creating kind cluster for evaluation run", "name", clusterName)
-			if err := createKindCluster(clusterName); err != nil {
-				return fmt.Errorf("failed to create kind cluster: %w", err)
+			logger.Info("Creating cluster for evaluation run", "name", clusterName, "provider", config.ClusterProvider)
+			if err := clusterProvider.Create(clusterName); err != nil {
+				return fmt.Errorf("failed to create cluster: %w", err)
 			}
 		}
 
 		// Get kubeconfig
-		logger.Info("Getting kubeconfig for kind cluster", "name", clusterName)
-		kubeconfigBytes, err := exec.Command("kind", "get", "kubeconfig", "--name", clusterName).Output()
+		logger.Info("Getting kubeconfig for cluster", "name", clusterName)
+		kubeconfigBytes, err := clusterProvider.GetKubeconfig(clusterName)
 		if err != nil {
-			return fmt.Errorf("failed to get kubeconfig for kind cluster: %w", err)
+			return fmt.Errorf("failed to get kubeconfig for cluster: %w", err)
 		}
 
 		// Write kubeconfig to a temp file
@@ -152,7 +173,7 @@ func runEvaluation(ctx context.Context, config EvalConfig) error {
 					start := time.Now()
 					fmt.Printf("\033[36mWorker %d: Started %s for %s\033[0m\n", workerID, llmConfig.ID, job.taskID)
 
-					result := evaluateTask(ctx, config, job.taskID, job.task, llmConfig, log)
+					result := evaluateTask(ctx, config, job.taskID, job.task, llmConfig, clusterProvider, log)
 
 					fmt.Printf("\033[32mWorker %d: Completed %s for %s in %s\033[0m\n",
 						workerID,
@@ -267,7 +288,7 @@ func getLastNLines(s string, n int) (string, bool) {
 	return s, false
 }
 
-func evaluateTask(ctx context.Context, config EvalConfig, taskID string, task Task, llmConfig model.LLMConfig, log io.Writer) model.TaskResult {
+func evaluateTask(ctx context.Context, config EvalConfig, taskID string, task Task, llmConfig model.LLMConfig, clusterProvider cluster.Provider, log io.Writer) model.TaskResult {
 	result := model.TaskResult{
 		Task:      taskID,
 		LLMConfig: llmConfig,
@@ -297,14 +318,20 @@ func evaluateTask(ctx context.Context, config EvalConfig, taskID string, task Ta
 	}
 
 	x := &TaskExecution{
-		AgentBin:      config.AgentBin,
-		kubeConfig:    config.KubeConfig,
-		result:        &result,
-		llmConfig:     llmConfig,
-		log:           multiWriter,
-		task:          &task,
-		taskID:        taskID,
-		taskOutputDir: taskOutputDir,
+		AgentBin:        config.AgentBin,
+		kubeConfig:      config.KubeConfig,
+		result:          &result,
+		llmConfig:       llmConfig,
+		log:             multiWriter,
+		task:            &task,
+		taskID:          taskID,
+		taskOutputDir:   taskOutputDir,
+		clusterProvider: clusterProvider,
+	}
+
+	// Set the isolation mode to cluster if vcluster is used.
+	if config.ClusterProvider == "vcluster" {
+		x.task.Isolation = IsolationModeCluster
 	}
 
 	taskDir := filepath.Join(config.TasksDir, taskID)
@@ -448,6 +475,8 @@ type TaskExecution struct {
 
 	// cleanupFunctions are a set of cleanupFunctions we run to undo anything we ran
 	cleanupFunctions []func() error
+
+	clusterProvider cluster.Provider
 }
 
 func (x *TaskExecution) runSetup(ctx context.Context) error {
@@ -459,32 +488,27 @@ func (x *TaskExecution) runSetup(ctx context.Context) error {
 		x.kubeConfig = kubeconfigPath
 
 		clusterName := fmt.Sprintf("k8s-ai-bench-%s", x.taskID)
-		log.Info("creating kind cluster", "name", clusterName)
+		log.Info("creating cluster", "name", clusterName)
 
-		args := []string{
-			"kind",
-			"create", "cluster",
-			"--name", clusterName,
-			"--wait", "5m",
-			"--kubeconfig", kubeconfigPath,
+		if err := x.clusterProvider.Create(clusterName); err != nil {
+			return fmt.Errorf("failed to create isolated cluster %q: %w", clusterName, err)
 		}
-		cmd := exec.CommandContext(ctx, args[0], args[1:]...)
-		cmd.Dir = x.taskDir
 
 		x.cleanupFunctions = append(x.cleanupFunctions, func() error {
-			args := []string{
-				"kind",
-				"delete", "cluster",
-				"--name", clusterName,
-				"--kubeconfig", kubeconfigPath,
+			if err := os.Remove(kubeconfigPath); err != nil {
+				log.Error(err, "failed to remove kubeconfig file", "path", kubeconfigPath)
 			}
-			cmd := exec.CommandContext(ctx, args[0], args[1:]...)
-			cmd.Dir = x.taskDir
-			return x.runCommand(cmd)
+			return x.clusterProvider.Delete(clusterName)
 		})
 
-		if err := x.runCommand(cmd); err != nil {
-			return err
+		// Get kubeconfig and write it to the file
+		kubeconfigBytes, err := x.clusterProvider.GetKubeconfig(clusterName)
+		if err != nil {
+			return fmt.Errorf("failed to get kubeconfig for isolated cluster %q: %w", clusterName, err)
+		}
+
+		if err := os.WriteFile(kubeconfigPath, kubeconfigBytes, 0644); err != nil {
+			return fmt.Errorf("failed to write kubeconfig for isolated cluster %q: %w", clusterName, err)
 		}
 	}
 

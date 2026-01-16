@@ -34,7 +34,16 @@ Run the benchmark against your agent binary. Results will be saved to the `.buil
 ## 🛠 Usage Guide
 
 ### `run` Subcommand
-The `run` subcommand executes the benchmark evaluations. It creates ephemeral Kind clusters (by default) to ensure test isolation.
+The `run` subcommand executes the benchmark evaluations. It creates ephemeral clusters to ensure test isolation. We support two platforms for the test environment: **Kind** (default) and **vCluster**.
+
+**vCluster Prerequisites:**
+For a detailed step-by-step guide on setting up and using vCluster, see [vCluster Guide](docs/vcluster.md).
+
+To use `vcluster`, you must have:
+* The `vcluster` [CLI](https://www.vcluster.com/docs/vcluster/) installed.
+* A running host Kubernetes cluster.
+* A kubecontext to connect to the host cluster (passed via `--host-cluster-context`).
+
 
 ```sh
 # Run with specific LLM provider and model
@@ -55,6 +64,8 @@ The `run` subcommand executes the benchmark evaluations. It creates ephemeral Ki
 | `--llm-provider` | LLM provider ID (e.g. 'gemini', 'openai') | gemini |
 | `--models` | Comma-separated list of models | gemini-2.5-pro... |
 | `--concurrency` | Number of parallel tasks (0 = auto) | 0 |
+| `--cluster-provider` | Cluster provider to use (`kind` or `vcluster`) | kind |
+| `--host-cluster-context` | Host cluster context for vcluster (Required if provider is vcluster) | - |
 
 ### `analyze` Subcommand
 Process and summarize results from previous runs.
