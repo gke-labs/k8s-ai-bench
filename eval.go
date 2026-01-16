@@ -489,6 +489,9 @@ func (x *TaskExecution) runSetup(ctx context.Context) error {
 		}
 
 		x.cleanupFunctions = append(x.cleanupFunctions, func() error {
+			if err := os.Remove(kubeconfigPath); err != nil {
+				log.Error(err, "failed to remove kubeconfig file", "path", kubeconfigPath)
+			}
 			return x.clusterProvider.Delete(clusterName)
 		})
 
