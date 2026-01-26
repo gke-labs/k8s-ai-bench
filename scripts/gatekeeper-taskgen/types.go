@@ -10,6 +10,7 @@ type Config struct {
 	Verbose      bool
 	Verify       bool
 	VerifyOnly   bool
+	Repair       bool
 	GeminiClient *genai.Client
 }
 
@@ -90,6 +91,13 @@ type PromptContext struct {
 }
 
 // RepairResult tracks what happened during a repair
+type RepairResult struct {
+	TaskID   string
+	Status   string // "repaired", "no_changes", "error"
+	FilePath string
+	Diff     string
+	Error    string
+}
 
 // Resource is a strongly-typed wrapper around map[string]any for K8s resources
 type Resource struct {

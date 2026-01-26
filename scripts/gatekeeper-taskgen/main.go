@@ -13,7 +13,30 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-var defaultSkipList = []string{}
+var defaultSkipList = []string{
+	"allowed-ip",
+	"block-endpoint-default-role",
+	"block-loadbalancer-services",
+	"block-wildcard-ingress",
+	"disallow-anonymous",
+	"horizontal-pod-autoscaler",
+	"must-have-owner",
+	"must-have-set-of-annotations",
+	"pod-disruption-budget",
+	"replica-limit",
+	"storageclass",
+	"storageclass-allowlist",
+	"tls-optional",
+	"tls-required",
+	"unique-ingress-host",
+	"unique-service-selector",
+	"verifydeprecatedapi-1.16",
+	"verifydeprecatedapi-1.22",
+	"verifydeprecatedapi-1.25",
+	"verifydeprecatedapi-1.26",
+	"verifydeprecatedapi-1.27",
+	"verifydeprecatedapi-1.29",
+}
 
 func main() {
 	cfg := Config{}
@@ -23,6 +46,7 @@ func main() {
 	flag.BoolVar(&cfg.Verbose, "verbose", false, "Enable verbose logging")
 	flag.BoolVar(&cfg.Verify, "verify", false, "Run gator verify on generated tasks")
 	flag.BoolVar(&cfg.VerifyOnly, "verify-only", false, "Run gator verify on existing tasks without generation")
+	flag.BoolVar(&cfg.Repair, "repair", false, "Run repair on generated tasks using Gemini")
 	flag.Parse()
 
 	cfg.SkipList = append(cfg.SkipList, defaultSkipList...)
@@ -52,6 +76,10 @@ func main() {
 }
 
 func run(cfg Config) error {
+	if cfg.Repair {
+		return runRepair(cfg)
+	}
+
 	if cfg.VerifyOnly {
 		return verifyTasks(cfg.OutputDir)
 	}
@@ -96,6 +124,44 @@ func run(cfg Config) error {
 	return nil
 }
 
+func runRepair(cfg Config) error {
+	taskMap, err := ParseSuites(cfg.LibraryRoot)
+	if err != nil {
+		return err
+	}
+
+	var allResults []RepairResult
+	var repaired, errorsCount int
+
+	fmt.Printf("Starting repair on %s...\n", cfg.OutputDir)
+
+	for _, id := range sortedKeys(taskMap) {
+		outDir := filepath.Join(cfg.OutputDir, id)
+		if _, err := os.Stat(outDir); os.IsNotExist(err) {
+			continue
+		}
+
+		results, err := repairTask(cfg, outDir, id)
+		allResults = append(allResults, results...)
+		
+		for _, r := range results {
+			if r.Status == "repaired" {
+				repaired++
+				fmt.Printf("Repaired %s: %s\n", id, filepath.Base(r.FilePath))
+			} else if r.Status == "error" {
+				errorsCount++
+				fmt.Printf("Error repairing %s: %s\n", id, r.Error)
+			}
+		}
+		if err != nil && cfg.Verbose {
+			fmt.Printf("Repair warning for %s: %v\n", id, err)
+		}
+	}
+
+	fmt.Printf("Repair complete. Repaired: %d, Errors: %d\n", repaired, errorsCount)
+	return writeRepairReport(cfg.OutputDir, allResults)
+}
+
 func shouldSkip(cfg Config, task TaskMetadata) (bool, string) {
 	for _, skip := range cfg.SkipList {
 		if skip == task.TestName || skip == task.SuiteName || strings.Contains(task.TestName, skip) {
@@ -124,12 +190,6 @@ func generateTask(cfg Config, task TaskMetadata) error {
 	if err != nil {
 		return err
 	}
-	caseKinds := caseKinds(artifacts)
-	if !isPodOnly(caseKinds) {
-		_ = os.RemoveAll(outDir)
-		return fmt.Errorf("non-pod task (kinds: %s)", strings.Join(caseKinds, ","))
-	}
-
 	// Generate prompt
 	prompt, err := BuildPrompt(cfg, promptCtx)
 	if err != nil {
