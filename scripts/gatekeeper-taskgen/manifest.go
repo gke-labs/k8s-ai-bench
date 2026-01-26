@@ -18,7 +18,7 @@ func GenerateManifests(task TaskMetadata, outDir string) (TaskArtifacts, PromptC
 	artifacts := TaskArtifacts{
 		CaseFiles: map[string][]string{},
 	}
-	alphaIdx, betaIdx := 1, 1
+	resourceIdx := 1
 	alphaFileIdx, betaFileIdx := 1, 1
 	nsSet := map[string]bool{defaultNS: true}
 	nameRegistry := newNameRegistry()
@@ -31,8 +31,9 @@ func GenerateManifests(task TaskMetadata, outDir string) (TaskArtifacts, PromptC
 		if data, err := os.ReadFile(task.TemplatePath); err == nil {
 			templateYAML = string(data)
 		}
-		if meta, ok := docs[0]["metadata"].(map[string]interface{}); ok {
-			if ann, ok := meta["annotations"].(map[string]interface{}); ok {
+		res := NewResource(docs[0])
+		if meta := res.NestedMap("metadata"); meta != nil {
+			if ann := ensureMap(meta, "annotations"); ann != nil {
 				if v, ok := ann["metadata.gatekeeper.sh/title"].(string); ok {
 					templateTitle = v
 				}
@@ -51,37 +52,40 @@ func GenerateManifests(task TaskMetadata, outDir string) (TaskArtifacts, PromptC
 
 	for _, c := range task.Cases {
 		caseDocs, _ := readYAMLDocs(c.ObjectPath)
-		if len(caseDocs) == 0 || isAdmissionReview(caseDocs[0]) || !isDeployable(caseDocs[0]) {
+		if len(caseDocs) == 0 {
+			continue
+		}
+		
+		firstRes := NewResource(caseDocs[0])
+		if isAdmissionReview(firstRes) || !isDeployable(firstRes) {
 			continue
 		}
 
 		// Build docs
 		type docInfo struct {
-			doc     map[string]interface{}
+			doc     *Resource
 			newName string
 		}
 		var allDocs []docInfo
 
 		for _, doc := range caseDocs[:1] {
-			kind := getStr(doc, "kind")
+			res := NewResource(doc)
+			kind := res.Kind()
 			namespace := defaultNS
-			var name string
-			if c.Expected == "alpha" {
-				name = fmt.Sprintf("resource-alpha-%02d", alphaIdx)
-				alphaIdx++
-			} else {
-				name = fmt.Sprintf("resource-beta-%02d", betaIdx)
-				betaIdx++
-			}
-			name, _ = nameRegistry.allocate(kind, namespace, "resource")
-			allDocs = append(allDocs, docInfo{doc, name})
+			
+		  // obfuscate resources names to the model 
+			baseName := fmt.Sprintf("resource-%03d", resourceIdx)
+			resourceIdx++
+			
+			name, _ := nameRegistry.allocate(kind, namespace, baseName)
+			allDocs = append(allDocs, docInfo{res, name})
 		}
 
 		// Rewrite and save
 		for _, d := range allDocs {
-			rewriteManifest(d.doc, d.newName, defaultNS, task.TaskID, c.Expected)
-			kind := getStr(d.doc, "kind")
-			ns := getStr(d.doc, "metadata", "namespace")
+			rewriteManifest(d.doc.Object, d.newName, defaultNS, task.TaskID, c.Expected)
+			kind := d.doc.Kind()
+			ns := d.doc.Namespace()
 			if ns != "" {
 				nsSet[ns] = true
 			}
@@ -96,7 +100,7 @@ func GenerateManifests(task TaskMetadata, outDir string) (TaskArtifacts, PromptC
 			}
 			relPath := "artifacts/" + fileName
 
-			data, _ := yaml.Marshal(d.doc)
+			data, _ := yaml.Marshal(d.doc.Object)
 			os.WriteFile(filepath.Join(outDir, relPath), data, 0644)
 
 			if c.Expected == "alpha" && len(alphaExamples) < 2 {
@@ -108,7 +112,7 @@ func GenerateManifests(task TaskMetadata, outDir string) (TaskArtifacts, PromptC
 			artifacts.Manifests = append(artifacts.Manifests, TaskManifest{
 				Path:      filepath.Join(outDir, relPath),
 				RelPath:   relPath,
-				Doc:       d.doc,
+				Doc:       d.doc.Object,
 				CaseName:  c.Name,
 				Expected:  c.Expected,
 				Kind:      kind,
@@ -143,18 +147,15 @@ func GenerateManifests(task TaskMetadata, outDir string) (TaskArtifacts, PromptC
 	return artifacts, promptCtx, nil
 }
 
-func isAdmissionReview(doc map[string]interface{}) bool {
-	return getStr(doc, "kind") == "AdmissionReview"
+func isAdmissionReview(res *Resource) bool {
+	return res.Kind() == "AdmissionReview"
 }
 
-func isDeployable(doc map[string]interface{}) bool {
-	if getStr(doc, "kind") != "Pod" {
+func isDeployable(res *Resource) bool {
+	if res.Kind() != "Pod" {
 		return true
 	}
-	spec, ok := doc["spec"].(map[string]interface{})
-	if !ok {
-		return true
-	}
+	spec := res.Spec()
 	if _, hasEphemeral := spec["ephemeralContainers"]; hasEphemeral {
 		return false
 	}
@@ -196,28 +197,3 @@ func readYAMLDocs(path string) ([]map[string]interface{}, error) {
 	return results, nil
 }
 
-func getStr(m map[string]interface{}, keys ...string) string {
-	for i, k := range keys {
-		if i == len(keys)-1 {
-			if v, ok := m[k].(string); ok {
-				return v
-			}
-			return ""
-		}
-		if next, ok := m[k].(map[string]interface{}); ok {
-			m = next
-		} else {
-			return ""
-		}
-	}
-	return ""
-}
-
-func ensureMap(parent map[string]interface{}, key string) map[string]interface{} {
-	if v, ok := parent[key].(map[string]interface{}); ok {
-		return v
-	}
-	m := map[string]interface{}{}
-	parent[key] = m
-	return m
-}

@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    k8s-ai-bench/task: memory-ratio-only
+    owner: me.agilebank.demo
+  name: resource-002
+  namespace: gk-memory-ratio-only
+spec:
+  containers:
+  - args:
+    - run
+    - --server
+    - --addr=localhost:8080
+    image: openpolicyagent/opa:0.9.2
+    name: opa
+    resources:
+      limits:
+        cpu: 3m
+        memory: 3Mi
+      requests:
+        cpu: 1m
+        memory: 1Mi

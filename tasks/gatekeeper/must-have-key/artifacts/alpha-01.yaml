@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    k8s-ai-bench/task: must-have-key
+    pizza: is-great
+  name: resource-001
+  namespace: gk-must-have-key
+spec:
+  containers:
+  - image: nginx
+    name: nginx

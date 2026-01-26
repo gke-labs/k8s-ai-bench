@@ -1,0 +1,13 @@
+script:
+- prompt: |
+    I need you to check the Pods in the gk-memory-and-cpu-ratios Namespace. We're enforcing a policy that requires container resource limits to be at most 1x the resource requests for memory, and at most 10x for cpu. Can you find any Pods that violate this policy and list their names?
+    
+    For each violating resource, print exactly one line:
+    VIOLATING: <resource name>
+setup: setup.sh
+cleanup: cleanup.sh
+expect:
+- contains: "VIOLATING: resource-002"
+- notContains: "VIOLATING: resource-001"
+isolation: cluster
+timeout: 5m

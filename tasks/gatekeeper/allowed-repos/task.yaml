@@ -1,0 +1,15 @@
+script:
+- prompt: |
+    I need you to check the Pods running in the gk-allowed-repos namespace. We have a policy that all container images must come from the "openpolicyagent/" repository. Can you identify any Pods that violate this policy?
+    
+    For each violating resource, print one line in this format:
+    VIOLATING: <resource name>
+setup: setup.sh
+cleanup: cleanup.sh
+expect:
+- contains: "VIOLATING: resource-002"
+- contains: "VIOLATING: resource-003"
+- contains: "VIOLATING: resource-004"
+- notContains: "VIOLATING: resource-001"
+isolation: cluster
+timeout: 5m

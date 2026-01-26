@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strings"
 
 	"google.golang.org/genai"
@@ -22,7 +21,8 @@ func main() {
 	flag.StringVar(&cfg.OutputDir, "output-dir", "tasks/gatekeeper", "Directory to write tasks")
 	flag.Var(&stringSliceFlag{&cfg.SkipList}, "skip", "Patterns to skip (can be repeated)")
 	flag.BoolVar(&cfg.Verbose, "verbose", false, "Enable verbose logging")
-	flag.BoolVar(&cfg.Repair, "repair", false, "Repair beta manifests via Gemini after generation")
+	flag.BoolVar(&cfg.Verify, "verify", false, "Run gator verify on generated tasks")
+	flag.BoolVar(&cfg.VerifyOnly, "verify-only", false, "Run gator verify on existing tasks without generation")
 	flag.Parse()
 
 	cfg.SkipList = append(cfg.SkipList, defaultSkipList...)
@@ -40,7 +40,7 @@ func main() {
 			cfg.GeminiClient = client
 			fmt.Println("Gemini client initialized - will generate prompts using AI")
 		}
-	} else {
+	} else if !cfg.VerifyOnly {
 		fmt.Fprintln(os.Stderr, "GEMINI_API_KEY not set - Gemini is required for prompt generation")
 		os.Exit(1)
 	}
@@ -52,6 +52,10 @@ func main() {
 }
 
 func run(cfg Config) error {
+	if cfg.VerifyOnly {
+		return verifyTasks(cfg.OutputDir)
+	}
+
 	taskMap, err := ParseSuites(cfg.LibraryRoot)
 	if err != nil {
 		return err
@@ -63,7 +67,6 @@ func run(cfg Config) error {
 	os.MkdirAll(cfg.OutputDir, 0755)
 
 	var generated, skipped int
-	var repairResults []RepairResult
 	for _, id := range sortedKeys(taskMap) {
 		task := taskMap[id]
 		if skip, reason := shouldSkip(cfg, task); skip {
@@ -71,32 +74,22 @@ func run(cfg Config) error {
 			skipped++
 			continue
 		}
-		repairResultsForTask, err := generateTask(cfg, task)
-		if err != nil {
+		if err := generateTask(cfg, task); err != nil {
 			fmt.Printf("Skipped %s: %v\n", id, err)
 			skipped++
-			// Still collect the repair result for the report even if it errored
-			if len(repairResultsForTask) > 0 {
-				repairResults = append(repairResults, repairResultsForTask...)
-			}
 		} else {
 			if cfg.Verbose {
 				fmt.Printf("Generated task %s\n", id)
 			}
 			generated++
-			if len(repairResultsForTask) > 0 {
-				repairResults = append(repairResults, repairResultsForTask...)
-			}
 		}
 	}
 	fmt.Printf("Generated tasks: %d (skipped %d)\n", generated, skipped)
 
-	// Write repair report if repairs were attempted
-	if cfg.Repair && len(repairResults) > 0 {
-		if err := writeRepairReport(cfg.OutputDir, repairResults); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to write repair report: %v\n", err)
-		} else {
-			fmt.Printf("Repair report written to %s/repair-report.md\n", cfg.OutputDir)
+	if cfg.Verify {
+		if err := verifyTasks(cfg.OutputDir); err != nil {
+			// Don't fail the entire run if verification fails, just report it
+			fmt.Fprintf(os.Stderr, "Verification failed: %v\n", err)
 		}
 	}
 
@@ -123,24 +116,24 @@ func shouldSkip(cfg Config, task TaskMetadata) (bool, string) {
 	return false, ""
 }
 
-func generateTask(cfg Config, task TaskMetadata) ([]RepairResult, error) {
+func generateTask(cfg Config, task TaskMetadata) error {
 	outDir := filepath.Join(cfg.OutputDir, task.TaskID)
 
 	// Generate manifests and collect prompt context
 	artifacts, promptCtx, err := GenerateManifests(task, outDir)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	caseKinds := caseKinds(artifacts)
 	if !isPodOnly(caseKinds) {
 		_ = os.RemoveAll(outDir)
-		return nil, fmt.Errorf("non-pod task (kinds: %s)", strings.Join(caseKinds, ","))
+		return fmt.Errorf("non-pod task (kinds: %s)", strings.Join(caseKinds, ","))
 	}
 
 	// Generate prompt
 	prompt, err := BuildPrompt(cfg, promptCtx)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	contains, notContains := buildExpectations(artifacts)
@@ -178,15 +171,7 @@ timeout: 5m
 	// Write setup/cleanup scripts
 	writeScripts(outDir, task.TaskID, artifacts)
 
-	if cfg.Repair {
-		results, err := repairTask(cfg, outDir, task.TaskID)
-		if err != nil {
-			return results, fmt.Errorf("repair %s: %v", task.TaskID, err)
-		}
-		return results, nil
-	}
-
-	return nil, nil
+	return nil
 }
 
 func caseKinds(artifacts TaskArtifacts) []string {
@@ -297,24 +282,6 @@ func copyFile(src, dst string) error {
 	return os.WriteFile(dst, data, 0644)
 }
 
-func indent(text, prefix string) string {
-	lines := strings.Split(text, "\n")
-	for i := range lines {
-		lines[i] = prefix + lines[i]
-	}
-	return strings.Join(lines, "\n")
-}
-
-func sortedKeys[T any](m map[string]T) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
-}
-
-// stringSliceFlag allows repeated -skip flags
 type stringSliceFlag struct {
 	values *[]string
 }

@@ -1,0 +1,12 @@
+script:
+- prompt: |
+    I need to check the Pods running in the gk-container-image-must-have-digest namespace to ensure all container images are specified using a digest (sha256). Can you tell me which Pods violate this policy?
+    
+    Report each violating Pod name on a separate line using the format: VIOLATING: <resource name>
+setup: setup.sh
+cleanup: cleanup.sh
+expect:
+- contains: "VIOLATING: resource-002"
+- notContains: "VIOLATING: resource-001"
+isolation: cluster
+timeout: 5m

@@ -1,0 +1,12 @@
+script:
+- prompt: |
+    I need you to check the Pods in the gk-container-requests Namespace.  We require all containers to have CPU and memory requests set, with CPU requests no higher than 200m and memory requests no higher than 1Gi. Identify any Pods that violate this policy.
+    
+    For each violating resource, print a single line using the format: VIOLATING: <resource name>
+setup: setup.sh
+cleanup: cleanup.sh
+expect:
+- contains: "VIOLATING: resource-002"
+- notContains: "VIOLATING: resource-001"
+isolation: cluster
+timeout: 5m

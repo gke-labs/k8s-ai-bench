@@ -2,10 +2,6 @@ package main
 
 import "strings"
 
-// Manifest rewrites are grouped to make intent explicit:
-// 1) identity: isolate the task with stable names/namespaces/labels
-// 2) references: keep object references consistent with renamed resources
-// 3) deployability: safe tweaks that avoid stuck pods or image pull failures
 type manifestRewriteContext struct {
 	name     string
 	ns       string
@@ -13,7 +9,8 @@ type manifestRewriteContext struct {
 	expected string
 }
 
-func rewriteManifest(doc map[string]interface{}, name, ns, taskID, expected string) {
+func rewriteManifest(doc map[string]any, name, ns, taskID, expected string) {
+	res := NewResource(doc)
 	ctx := manifestRewriteContext{
 		name:     name,
 		ns:       ns,
@@ -21,77 +18,68 @@ func rewriteManifest(doc map[string]interface{}, name, ns, taskID, expected stri
 		expected: expected,
 	}
 
-	applyIdentity(doc, ctx)
-	applyDeployabilityFixes(doc)
+	applyIdentity(res, ctx)
+	applyDeployabilityFixes(res)
 }
 
-func applyIdentity(doc map[string]interface{}, ctx manifestRewriteContext) {
-	meta := ensureMap(doc, "metadata")
-	meta["name"] = ctx.name
-	meta["namespace"] = ctx.ns
-
-	labels := ensureMap(meta, "labels")
-	labels["k8s-ai-bench/task"] = ctx.taskID
-	labels["k8s-ai-bench/expected"] = ctx.expected
+func applyIdentity(res *Resource, ctx manifestRewriteContext) {
+	res.SetName(ctx.name)
+	res.SetNamespace(ctx.ns)
+	res.SetLabel("k8s-ai-bench/task", ctx.taskID)
 }
 
-func applyDeployabilityFixes(doc map[string]interface{}) {
-	fixInitContainers(doc)
-	fixBadImages(doc)
+func applyDeployabilityFixes(res *Resource) {
+	fixInitContainers(res)
+	fixBadImages(res)
 }
 
 // fixInitContainers adds exit command to init containers that would run forever
-func fixInitContainers(doc map[string]interface{}) {
-	podSpec := podSpecForWorkload(doc)
+func fixInitContainers(res *Resource) {
+	podSpec := podSpecForWorkload(res)
 	if podSpec == nil {
 		return
 	}
 
-	initContainers, ok := podSpec["initContainers"].([]interface{})
+	initContainers, ok := podSpec["initContainers"].([]any)
 	if !ok {
 		return
 	}
 
 	for _, c := range initContainers {
-		container, ok := c.(map[string]interface{})
+		container, ok := c.(map[string]any)
 		if !ok {
 			continue
 		}
-		// Init containers need to exit for the pod to start.
-		// Override command/args with a simple exit for images that run servers.
 		image, _ := container["image"].(string)
 		if strings.Contains(image, "nginx") {
-			container["command"] = []interface{}{"sh", "-c", "exit 0"}
+			container["command"] = []any{"sh", "-c", "exit 0"}
 			delete(container, "args")
 		} else if strings.Contains(image, "opa") {
 			// OPA image doesn't have sh, use built-in eval that exits
-			container["command"] = []interface{}{"opa", "eval", "true"}
+			container["command"] = []any{"opa", "eval", "true"}
 			delete(container, "args")
 		}
 	}
 }
 
-// fixBadImages replaces images that fail to pull with working alternatives
-// Only for images where the replacement doesn't affect the policy test
-func fixBadImages(doc map[string]interface{}) {
-	podSpec := podSpecForWorkload(doc)
+func fixBadImages(res *Resource) {
+	podSpec := podSpecForWorkload(res)
 	if podSpec == nil {
 		return
 	}
 
-	// Only fix specific images where replacement doesn't break test semantics
 	replacements := map[string]string{
 		"tomcat":      "nginx",      // required-probes: policy checks probes, not image
 		"nginx:1.7.9": "nginx:1.25", // old nginx tag doesn't exist
 	}
 
 	for _, key := range []string{"containers", "initContainers"} {
-		containers, ok := podSpec[key].([]interface{})
+		containers, ok := podSpec[key].([]any)
 		if !ok {
 			continue
 		}
 		for _, c := range containers {
-			container, ok := c.(map[string]interface{})
+			container, ok := c.(map[string]any)
 			if !ok {
 				continue
 			}
@@ -108,11 +96,9 @@ func fixBadImages(doc map[string]interface{}) {
 	}
 }
 
-func podSpecForWorkload(doc map[string]interface{}) map[string]interface{} {
-	kind := getStr(doc, "kind")
-	if kind != "Pod" {
+func podSpecForWorkload(res *Resource) map[string]any {
+	if res.Kind() != "Pod" {
 		return nil
 	}
-	podSpec, _ := doc["spec"].(map[string]interface{})
-	return podSpec
+	return res.Spec()
 }

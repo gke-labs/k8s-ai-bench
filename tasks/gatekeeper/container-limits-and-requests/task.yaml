@@ -1,0 +1,15 @@
+script:
+- prompt: |
+    I need you to check the Pods in the gk-container-limits-and-requests namespace. Our policy requires all containers to define both CPU and memory limits and requests. Please identify any Pods in that namespace that violate this policy.
+    
+    For each violating resource, print exactly one line in this format:
+    VIOLATING: <resource name>
+setup: setup.sh
+cleanup: cleanup.sh
+expect:
+- contains: "VIOLATING: resource-002"
+- contains: "VIOLATING: resource-003"
+- contains: "VIOLATING: resource-004"
+- notContains: "VIOLATING: resource-001"
+isolation: cluster
+timeout: 5m

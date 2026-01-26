@@ -8,7 +8,8 @@ type Config struct {
 	OutputDir    string
 	SkipList     []string
 	Verbose      bool
-	Repair       bool
+	Verify       bool
+	VerifyOnly   bool
 	GeminiClient *genai.Client
 }
 
@@ -57,14 +58,14 @@ type TaskMetadata struct {
 
 // TaskManifest represents a generated manifest file
 type TaskManifest struct {
-	Path          string
-	RelPath       string
-	CaseName      string
-	Expected      string
-	Kind          string
-	Name          string
-	Namespace     string
-	Doc           map[string]interface{}
+	Path      string
+	RelPath   string
+	CaseName  string
+	Expected  string
+	Kind      string
+	Name      string
+	Namespace string
+	Doc       map[string]any
 }
 
 // TaskArtifacts holds all generated artifacts for a task
@@ -89,10 +90,67 @@ type PromptContext struct {
 }
 
 // RepairResult tracks what happened during a repair
-type RepairResult struct {
-	TaskID   string
-	Status   string // "repaired", "no_changes", "error"
-	FilePath string
-	Diff     string
-	Error    string
+
+// Resource is a strongly-typed wrapper around map[string]any for K8s resources
+type Resource struct {
+	Object map[string]any
+}
+
+func NewResource(obj map[string]any) *Resource {
+	if obj == nil {
+		obj = make(map[string]any)
+	}
+	return &Resource{Object: obj}
+}
+
+func (r *Resource) Kind() string {
+	return getStr(r.Object, "kind")
+}
+
+func (r *Resource) SetKind(kind string) {
+	r.Object["kind"] = kind
+}
+
+func (r *Resource) Name() string {
+	return getStr(r.Object, "metadata", "name")
+}
+
+func (r *Resource) SetName(name string) {
+	ensureMap(r.Object, "metadata")["name"] = name
+}
+
+func (r *Resource) Namespace() string {
+	return getStr(r.Object, "metadata", "namespace")
+}
+
+func (r *Resource) SetNamespace(ns string) {
+	ensureMap(r.Object, "metadata")["namespace"] = ns
+}
+
+func (r *Resource) Labels() map[string]any {
+	meta := ensureMap(r.Object, "metadata")
+	return ensureMap(meta, "labels")
+}
+
+func (r *Resource) SetLabel(key, value string) {
+	r.Labels()[key] = value
+}
+
+// Spec returns the spec map, creating it if it doesn't exist
+func (r *Resource) Spec() map[string]any {
+	return ensureMap(r.Object, "spec")
+}
+
+// NestedMap returns a nested map, creating it if it doesn't exist
+func (r *Resource) NestedMap(keys ...string) map[string]any {
+	m := r.Object
+	for _, k := range keys {
+		m = ensureMap(m, k)
+	}
+	return m
+}
+
+// GetString returns a string value from a nested path
+func (r *Resource) GetString(keys ...string) string {
+	return getStr(r.Object, keys...)
 }

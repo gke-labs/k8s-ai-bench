@@ -25,9 +25,6 @@ func rewriteConstraint(src, dst, ns string) error {
 	return writeConstraintYAML(dst, doc)
 }
 
-// rewriteConstraintForPrompt returns a YAML string suitable for prompt context.
-// It mirrors the namespace rewrite applied to the on-disk constraint, but falls
-// back to the raw YAML if parsing or marshaling fails.
 func rewriteConstraintForPrompt(raw []byte, ns string) string {
 	doc, err := decodeConstraintYAML(raw)
 	if err != nil {
@@ -46,7 +43,7 @@ func rewriteConstraintForPrompt(raw []byte, ns string) string {
 	return string(out)
 }
 
-func readConstraintYAML(path string) (map[string]interface{}, error) {
+func readConstraintYAML(path string) (map[string]any, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -54,18 +51,18 @@ func readConstraintYAML(path string) (map[string]interface{}, error) {
 	return decodeConstraintYAML(data)
 }
 
-func decodeConstraintYAML(data []byte) (map[string]interface{}, error) {
-	var doc map[string]interface{}
+func decodeConstraintYAML(data []byte) (map[string]any, error) {
+	var doc map[string]any
 	if err := yaml.Unmarshal(data, &doc); err != nil {
 		return nil, err
 	}
 	if doc == nil {
-		doc = map[string]interface{}{}
+		doc = map[string]any{}
 	}
 	return doc, nil
 }
 
-func writeConstraintYAML(path string, doc map[string]interface{}) error {
+func writeConstraintYAML(path string, doc map[string]any) error {
 	out, err := yaml.Marshal(doc)
 	if err != nil {
 		return err
@@ -76,7 +73,7 @@ func writeConstraintYAML(path string, doc map[string]interface{}) error {
 // rewriteConstraintNamespaces applies the only manual transform we need:
 // if spec.match.namespaces is present and non-empty, replace it with the task
 // namespace to keep constraints scoped to the isolated test namespace.
-func rewriteConstraintNamespaces(doc map[string]interface{}, ns string) (bool, string) {
+func rewriteConstraintNamespaces(doc map[string]any, ns string) (bool, string) {
 	spec, ok := getMap(doc, "spec")
 	if !ok {
 		return false, "spec not found; leaving unchanged"
@@ -98,19 +95,28 @@ func rewriteConstraintNamespaces(doc map[string]interface{}, ns string) (bool, s
 	}
 
 	match["namespaces"] = []string{ns}
-	return true, fmt.Sprintf("spec.match.namespaces %v -> [%q]", namespaces, ns)
+	
+	// Scrub leaking labels if present
+	if meta, ok := getMap(doc, "metadata"); ok {
+		if labels, ok := getMap(meta, "labels"); ok {
+			delete(labels, "k8s-ai-bench/expected")
+			delete(labels, "k8s-ai-bench/task")
+		}
+	}
+
+	return true, fmt.Sprintf("spec.match.namespaces %v -> [%q] (and labels scrubbed)", namespaces, ns)
 }
 
-func getMap(doc map[string]interface{}, key string) (map[string]interface{}, bool) {
-	child, ok := doc[key].(map[string]interface{})
+func getMap(doc map[string]any, key string) (map[string]any, bool) {
+	child, ok := doc[key].(map[string]any)
 	return child, ok
 }
 
-func toStringSlice(value interface{}) ([]string, bool) {
+func toStringSlice(value any) ([]string, bool) {
 	switch v := value.(type) {
 	case []string:
 		return v, true
-	case []interface{}:
+	case []any:
 		out := make([]string, 0, len(v))
 		for _, item := range v {
 			s, ok := item.(string)

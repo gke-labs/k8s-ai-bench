@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    k8s-ai-bench/task: container-image-must-have-digest
+  name: resource-002
+  namespace: gk-container-image-must-have-digest
+spec:
+  containers:
+  - args:
+    - run
+    - --server
+    - --addr=localhost:8080
+    image: openpolicyagent/opa:0.9.2
+    name: opa
+  initContainers:
+  - command:
+    - opa
+    - eval
+    - "true"
+    image: openpolicyagent/opa:0.9.2
+    name: opainit

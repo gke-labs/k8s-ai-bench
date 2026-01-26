@@ -20,11 +20,14 @@ func (nr *nameRegistry) allocate(kind, namespace, base string) (string, bool) {
 	if base == "" {
 		return "", false
 	}
+
 	key := nameKey{kind: kind, namespace: namespace, name: base}
 	if !nr.used[key] {
 		nr.used[key] = true
 		return base, false
 	}
+
+	// try base-2, base-3, ...
 	for i := 2; ; i++ {
 		candidate := fmt.Sprintf("%s-%d", base, i)
 		key = nameKey{kind: kind, namespace: namespace, name: candidate}
