@@ -1,62 +1,107 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 
 	"google.golang.org/genai"
+	"sigs.k8s.io/yaml"
 )
 
 const repairModel = "gemini-2.5-flash"
 
-func repairTask(cfg Config, outDir, taskID string) RepairResult {
+func repairTask(cfg Config, outDir, taskID string) ([]RepairResult, error) {
 	if cfg.GeminiClient == nil {
-		return RepairResult{TaskID: taskID, Status: "error", Error: "GEMINI_API_KEY not set"}
+		return []RepairResult{{TaskID: taskID, Status: "error", Error: "GEMINI_API_KEY not set"}}, fmt.Errorf("GEMINI_API_KEY not set")
 	}
 
-	alphaPath, betaPath, err := findAlphaBeta(outDir)
+	alphaPaths, betaPaths, err := findArtifacts(outDir)
 	if err != nil {
-		return RepairResult{TaskID: taskID, Status: "error", Error: err.Error()}
+		return []RepairResult{{TaskID: taskID, Status: "error", Error: err.Error()}}, err
 	}
-
-	// Find inventory files
-	inventoryPaths, _ := findInventory(outDir)
 
 	constraintPath := filepath.Join(outDir, "constraint.yaml")
 	templatePath := filepath.Join(outDir, "template.yaml")
 	constraintYAML, err := os.ReadFile(constraintPath)
 	if err != nil {
-		return RepairResult{TaskID: taskID, Status: "error", Error: err.Error()}
+		return []RepairResult{{TaskID: taskID, Status: "error", Error: err.Error()}}, err
 	}
-	templateYAML, err := os.ReadFile(templatePath)
-	if err != nil {
-		return RepairResult{TaskID: taskID, Status: "error", Error: err.Error()}
-	}
-	alphaYAML, err := os.ReadFile(alphaPath)
-	if err != nil {
-		return RepairResult{TaskID: taskID, Status: "error", Error: err.Error()}
-	}
-	betaYAML, err := os.ReadFile(betaPath)
-	if err != nil {
-		return RepairResult{TaskID: taskID, Status: "error", Error: err.Error()}
+	var templateYAML []byte
+	if data, err := os.ReadFile(templatePath); err == nil {
+		templateYAML = data
+	} else if !os.IsNotExist(err) {
+		return []RepairResult{{TaskID: taskID, Status: "error", Error: err.Error()}}, err
 	}
 
-	// Read inventory files
-	var inventoryYAMLs []string
-	for _, invPath := range inventoryPaths {
-		if data, err := os.ReadFile(invPath); err == nil {
-			inventoryYAMLs = append(inventoryYAMLs, string(data))
+	var results []RepairResult
+	var firstErr error
+	for _, alphaPath := range alphaPaths {
+		r := repairManifest(cfg, taskID, alphaPath, "alpha (must be compliant)", string(constraintYAML), string(templateYAML))
+		results = append(results, r)
+		if r.Status == "error" && firstErr == nil {
+			firstErr = fmt.Errorf(r.Error)
+		}
+	}
+	for _, betaPath := range betaPaths {
+		r := repairManifest(cfg, taskID, betaPath, "beta (must violate)", string(constraintYAML), string(templateYAML))
+		results = append(results, r)
+		if r.Status == "error" && firstErr == nil {
+			firstErr = fmt.Errorf(r.Error)
 		}
 	}
 
-	prompt := buildRepairPrompt(betaPath, string(constraintYAML), string(templateYAML), string(alphaYAML), string(betaYAML), inventoryYAMLs)
+	return results, firstErr
+}
+
+func findArtifacts(outDir string) ([]string, []string, error) {
+	artifactsDir := filepath.Join(outDir, "artifacts")
+	alphaMatches, _ := filepath.Glob(filepath.Join(artifactsDir, "alpha-*.yaml"))
+	betaMatches, _ := filepath.Glob(filepath.Join(artifactsDir, "beta-*.yaml"))
+	sort.Strings(alphaMatches)
+	sort.Strings(betaMatches)
+	if len(alphaMatches) == 0 || len(betaMatches) == 0 {
+		return nil, nil, fmt.Errorf("missing alpha or beta artifacts")
+	}
+	return alphaMatches, betaMatches, nil
+}
+
+func buildRepairPrompt(targetPath, targetRole, constraintYAML, templateYAML, targetYAML string) string {
+	var b strings.Builder
+
+	b.WriteString("Edit ONLY the target manifest. Do not modify any other files.\n")
+	b.WriteString(fmt.Sprintf("Target role: %s\n", targetRole))
+	b.WriteString("Keep metadata.name, metadata.namespace, and all labels unchanged.\n")
+	b.WriteString("Do not change kind, apiVersion, or container names.\n")
+	b.WriteString("Prefer the smallest possible resource values (cpu: 1m, memory: 1Mi, ephemeral-storage: 1Mi) while satisfying the role.\n")
+	b.WriteString("If resource values must exceed a max to violate, set them just above the limit (never exactly equal).\n")
+	b.WriteString("If the constraint enforces required resources, alpha must include all required keys; beta must omit at least one required key.\n")
+	b.WriteString("If the constraint enforces ratios, alpha should have limits == requests; beta should have limits > requests so the ratio exceeds the max.\n")
+	b.WriteString("Do not add or remove containers unless required to satisfy the policy.\n")
+	b.WriteString("Return ONLY the full updated YAML for the target manifest. Do not return a diff.\n")
+	b.WriteString(fmt.Sprintf("Target path (for reference): %s\n", targetPath))
+	b.WriteString("If the target already satisfies the role with minimal values, respond with NO_CHANGES.\n\n")
+
+	appendYAMLSection(&b, "Constraint", constraintYAML, 2000)
+	if strings.TrimSpace(templateYAML) != "" {
+		appendYAMLSection(&b, "Template", templateYAML, 2000)
+	}
+	appendYAMLSection(&b, "Target manifest", targetYAML, 2000)
+
+	return strings.TrimSpace(b.String())
+}
+
+func repairManifest(cfg Config, taskID, targetPath, targetRole, constraintYAML, templateYAML string) RepairResult {
+	targetYAML, err := os.ReadFile(targetPath)
+	if err != nil {
+		return RepairResult{TaskID: taskID, Status: "error", Error: err.Error()}
+	}
+
+	prompt := buildRepairPrompt(targetPath, targetRole, constraintYAML, templateYAML, string(targetYAML))
 	ctx := context.Background()
 	result, err := cfg.GeminiClient.Models.GenerateContent(ctx, repairModel, genai.Text(prompt), nil)
 	if err != nil {
@@ -69,57 +114,103 @@ func repairTask(cfg Config, outDir, taskID string) RepairResult {
 
 	cleaned := stripCodeFences(text)
 	if strings.Contains(strings.ToUpper(cleaned), "NO_CHANGES") {
-		if cfg.Verbose {
-			fmt.Printf("Repair %s: NO_CHANGES\n", taskID)
+		normalized := strings.TrimSpace(string(targetYAML))
+		if shouldNormalizeResources(constraintYAML) {
+			if out, err := normalizeResourceValues(normalized); err == nil {
+				normalized = out
+			}
 		}
-		return RepairResult{TaskID: taskID, Status: "no_changes", FilePath: betaPath}
+		if normalized != strings.TrimSpace(string(targetYAML)) {
+			if err := os.WriteFile(targetPath, []byte(normalized+"\n"), 0644); err != nil {
+				return RepairResult{TaskID: taskID, Status: "error", FilePath: targetPath, Error: err.Error()}
+			}
+			return RepairResult{TaskID: taskID, Status: "repaired", FilePath: targetPath}
+		}
+		if cfg.Verbose {
+			fmt.Printf("Repair %s: NO_CHANGES (%s)\n", taskID, targetPath)
+		}
+		return RepairResult{TaskID: taskID, Status: "no_changes", FilePath: targetPath}
 	}
 
-	diff := normalizeDiff(cleaned, filepath.ToSlash(betaPath))
-	if cfg.Verbose {
-		fmt.Printf("Repair %s: applying diff\n", taskID)
+	trimmed := strings.TrimSpace(cleaned)
+	if !strings.Contains(trimmed, "apiVersion:") && !strings.Contains(trimmed, "kind:") {
+		return RepairResult{TaskID: taskID, Status: "error", FilePath: targetPath, Error: "repair output missing manifest YAML"}
 	}
-	if err := applyPatch(diff); err != nil {
-		return RepairResult{TaskID: taskID, Status: "error", FilePath: betaPath, Diff: diff, Error: err.Error()}
+	if shouldNormalizeResources(constraintYAML) {
+		if normalized, err := normalizeResourceValues(trimmed); err == nil {
+			trimmed = normalized
+		}
 	}
-	return RepairResult{TaskID: taskID, Status: "repaired", FilePath: betaPath, Diff: diff}
+	if err := os.WriteFile(targetPath, []byte(trimmed+"\n"), 0644); err != nil {
+		return RepairResult{TaskID: taskID, Status: "error", FilePath: targetPath, Error: err.Error()}
+	}
+	return RepairResult{TaskID: taskID, Status: "repaired", FilePath: targetPath}
 }
 
-func findAlphaBeta(outDir string) (string, string, error) {
-	artifactsDir := filepath.Join(outDir, "artifacts")
-	alphaMatches, _ := filepath.Glob(filepath.Join(artifactsDir, "alpha-*.yaml"))
-	betaMatches, _ := filepath.Glob(filepath.Join(artifactsDir, "beta-*.yaml"))
-	sort.Strings(alphaMatches)
-	sort.Strings(betaMatches)
-	if len(alphaMatches) == 0 || len(betaMatches) == 0 {
-		return "", "", fmt.Errorf("missing alpha or beta artifacts")
+func shouldNormalizeResources(constraintYAML string) bool {
+	kind := constraintKind(constraintYAML)
+	switch kind {
+	case "K8sContainerLimits", "K8sContainerRequests", "K8sContainerRatios":
+		return false
+	default:
+		return true
 	}
-	return alphaMatches[0], betaMatches[0], nil
 }
 
-func findInventory(outDir string) ([]string, error) {
-	artifactsDir := filepath.Join(outDir, "artifacts")
-	matches, _ := filepath.Glob(filepath.Join(artifactsDir, "inventory-*.yaml"))
-	sort.Strings(matches)
-	return matches, nil
+func constraintKind(raw string) string {
+	var obj map[string]interface{}
+	if err := yaml.Unmarshal([]byte(raw), &obj); err != nil {
+		return ""
+	}
+	if v, ok := obj["kind"].(string); ok {
+		return v
+	}
+	return ""
 }
 
-func buildRepairPrompt(targetPath, constraintYAML, templateYAML, alphaYAML, betaYAML string, inventoryYAMLs []string) string {
-	var b strings.Builder
+func normalizeResourceValues(raw string) (string, error) {
+	var obj map[string]interface{}
+	if err := yaml.Unmarshal([]byte(raw), &obj); err != nil {
+		return raw, err
+	}
 
-	b.WriteString("Edit ONLY the beta manifest so it violates the policy. Alpha must remain compliant.\n")
-	b.WriteString("Keep metadata.name, metadata.namespace, and all labels unchanged.\n")
-	b.WriteString("Return a unified diff for the beta manifest only.\n")
-	b.WriteString(fmt.Sprintf("Diff path: %s\n", targetPath))
-	b.WriteString("If beta already violates the policy, respond with NO_CHANGES.\n\n")
+	spec, _ := obj["spec"].(map[string]interface{})
+	for _, field := range []string{"containers", "initContainers"} {
+		if list, ok := spec[field].([]interface{}); ok {
+			for _, item := range list {
+				container, ok := item.(map[string]interface{})
+				if !ok {
+					continue
+				}
+				resources, _ := container["resources"].(map[string]interface{})
+				if len(resources) == 0 {
+					continue
+				}
+				if limits, ok := resources["limits"].(map[string]interface{}); ok {
+					if _, ok := limits["cpu"]; ok {
+						limits["cpu"] = "1m"
+					}
+					if _, ok := limits["memory"]; ok {
+						limits["memory"] = "1Mi"
+					}
+				}
+				if requests, ok := resources["requests"].(map[string]interface{}); ok {
+					if _, ok := requests["cpu"]; ok {
+						requests["cpu"] = "1m"
+					}
+					if _, ok := requests["memory"]; ok {
+						requests["memory"] = "1Mi"
+					}
+				}
+			}
+		}
+	}
 
-	appendYAMLSection(&b, "Constraint", constraintYAML, 2000)
-	appendYAMLSection(&b, "Template", templateYAML, 2000)
-	appendInventorySection(&b, inventoryYAMLs, 2, 1200)
-	appendYAMLSection(&b, "Alpha (compliant)", alphaYAML, 2000)
-	appendYAMLSection(&b, "Beta (must violate)", betaYAML, 2000)
-
-	return strings.TrimSpace(b.String())
+	out, err := yaml.Marshal(obj)
+	if err != nil {
+		return raw, err
+	}
+	return strings.TrimSpace(string(out)), nil
 }
 
 func appendYAMLSection(b *strings.Builder, title, raw string, limit int) {
@@ -128,20 +219,6 @@ func appendYAMLSection(b *strings.Builder, title, raw string, limit int) {
 		return
 	}
 	fmt.Fprintf(b, "%s:\n```yaml\n%s\n```\n\n", title, truncateString(raw, limit))
-}
-
-func appendInventorySection(b *strings.Builder, inventoryYAMLs []string, maxItems, limit int) {
-	if len(inventoryYAMLs) == 0 {
-		return
-	}
-	b.WriteString("Inventory (existing cluster resources):\n")
-	for i, inv := range inventoryYAMLs {
-		if i >= maxItems {
-			break
-		}
-		fmt.Fprintf(b, "```yaml\n%s\n```\n", truncateString(strings.TrimSpace(inv), limit))
-	}
-	b.WriteString("\n")
 }
 
 func truncateString(s string, limit int) string {
@@ -167,36 +244,6 @@ func stripCodeFences(text string) string {
 		lines = lines[:len(lines)-1]
 	}
 	return strings.TrimSpace(strings.Join(lines, "\n"))
-}
-
-func normalizeDiff(diffText, targetPath string) string {
-	lines := strings.Split(diffText, "\n")
-	replaced := false
-	for i, line := range lines {
-		if strings.HasPrefix(line, "--- ") {
-			lines[i] = "--- " + targetPath
-			replaced = true
-		} else if strings.HasPrefix(line, "+++ ") {
-			lines[i] = "+++ " + targetPath
-			replaced = true
-		}
-	}
-	if !replaced {
-		lines = append([]string{"--- " + targetPath, "+++ " + targetPath}, lines...)
-	}
-	return strings.Join(lines, "\n") + "\n"
-}
-
-func applyPatch(diff string) error {
-	cmd := exec.Command("patch", "-p0", "-u", "-i", "-")
-	cmd.Stdin = strings.NewReader(diff)
-	var output bytes.Buffer
-	cmd.Stdout = &output
-	cmd.Stderr = &output
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("patch failed: %s", strings.TrimSpace(output.String()))
-	}
-	return nil
 }
 
 func extractGeminiText(result *genai.GenerateContentResponse) (string, error) {

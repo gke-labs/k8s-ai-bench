@@ -30,7 +30,6 @@ type SuiteTest struct {
 type SuiteCase struct {
 	Name       string
 	Object     string
-	Inventory  []string
 	Assertions []SuiteAssertion
 }
 
@@ -41,10 +40,9 @@ type SuiteAssertion struct {
 
 // TaskCase represents a processed test case for task generation
 type TaskCase struct {
-	Name           string
-	Expected       string // "alpha" (compliant) or "beta" (violating)
-	ObjectPath     string
-	InventoryPaths []string
+	Name       string
+	Expected   string // "alpha" (compliant) or "beta" (violating)
+	ObjectPath string
 }
 
 // TaskMetadata holds all info needed to generate a task
@@ -67,23 +65,13 @@ type TaskManifest struct {
 	Name          string
 	Namespace     string
 	Doc           map[string]interface{}
-	Inventory     bool
-	ClusterScoped bool
-}
-
-// ClusterResource tracks cluster-scoped resources for cleanup
-type ClusterResource struct {
-	Kind string
-	Name string
 }
 
 // TaskArtifacts holds all generated artifacts for a task
 type TaskArtifacts struct {
-	Manifests        []TaskManifest
-	CaseFiles        map[string][]string
-	InventoryFiles   map[string][]string
-	Namespaces       []string
-	ClusterResources []ClusterResource
+	Manifests  []TaskManifest
+	CaseFiles  map[string][]string
+	Namespaces []string
 }
 
 // PromptContext holds all context needed to generate a prompt

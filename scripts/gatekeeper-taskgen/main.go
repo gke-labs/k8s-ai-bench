@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -13,33 +14,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-var defaultSkipList = []string{
-	// Name-sensitive or deprecated policies
-	"block-endpoint-default-role",
-	"noupdateserviceaccount",
-	"verifydeprecatedapi",
-	// Tasks with non-deployable resources (fake images, deprecated registries)
-	// These can't be fixed without breaking alpha/beta distinction
-	"allowed-reposv2",
-	"disallowed-tags",
-	"repo-must-not-be-k8s-gcr-io",
-	// Tasks with high resource requests that won't schedule on small clusters
-	// Capping resources would make both alpha and beta pass
-	"container-cpu-requests-memory-limits-and-requests",
-	"container-limits",
-	"container-limits-and-requests",
-	"container-limits-ignore-cpu",
-	"container-requests",
-	"ephemeral-storage-limit",
-	"memory-and-cpu-ratios",
-	"memory-ratio-only",
-	// Tasks with PVC issues
-	"storageclass",
-	"storageclass-allowlist",
-	// Tasks with complex runtime issues that need manual fixes
-	"container-image-must-have-digest", // OPA init container
-	"required-probes",                  // readiness probe port mismatches
-}
+var defaultSkipList = []string{}
 
 func main() {
 	cfg := Config{}
@@ -96,21 +71,21 @@ func run(cfg Config) error {
 			skipped++
 			continue
 		}
-		repairResult, err := generateTask(cfg, task)
+		repairResultsForTask, err := generateTask(cfg, task)
 		if err != nil {
 			fmt.Printf("Skipped %s: %v\n", id, err)
 			skipped++
 			// Still collect the repair result for the report even if it errored
-			if repairResult != nil {
-				repairResults = append(repairResults, *repairResult)
+			if len(repairResultsForTask) > 0 {
+				repairResults = append(repairResults, repairResultsForTask...)
 			}
 		} else {
 			if cfg.Verbose {
 				fmt.Printf("Generated task %s\n", id)
 			}
 			generated++
-			if repairResult != nil {
-				repairResults = append(repairResults, *repairResult)
+			if len(repairResultsForTask) > 0 {
+				repairResults = append(repairResults, repairResultsForTask...)
 			}
 		}
 	}
@@ -148,7 +123,7 @@ func shouldSkip(cfg Config, task TaskMetadata) (bool, string) {
 	return false, ""
 }
 
-func generateTask(cfg Config, task TaskMetadata) (*RepairResult, error) {
+func generateTask(cfg Config, task TaskMetadata) ([]RepairResult, error) {
 	outDir := filepath.Join(cfg.OutputDir, task.TaskID)
 
 	// Generate manifests and collect prompt context
@@ -156,11 +131,28 @@ func generateTask(cfg Config, task TaskMetadata) (*RepairResult, error) {
 	if err != nil {
 		return nil, err
 	}
+	caseKinds := caseKinds(artifacts)
+	if !isPodOnly(caseKinds) {
+		_ = os.RemoveAll(outDir)
+		return nil, fmt.Errorf("non-pod task (kinds: %s)", strings.Join(caseKinds, ","))
+	}
 
 	// Generate prompt
 	prompt, err := BuildPrompt(cfg, promptCtx)
 	if err != nil {
 		return nil, err
+	}
+
+	contains, notContains := buildExpectations(artifacts)
+	var expectLines []string
+	for _, name := range contains {
+		expectLines = append(expectLines, fmt.Sprintf(`- contains: "VIOLATING: %s"`, regexp.QuoteMeta(name)))
+	}
+	for _, name := range notContains {
+		expectLines = append(expectLines, fmt.Sprintf(`- notContains: "VIOLATING: %s"`, regexp.QuoteMeta(name)))
+	}
+	if len(expectLines) == 0 {
+		expectLines = append(expectLines, `- contains: "VIOLATING: resource-beta-\\d+"`)
 	}
 
 	// Write task.yaml
@@ -170,11 +162,10 @@ func generateTask(cfg Config, task TaskMetadata) (*RepairResult, error) {
 setup: setup.sh
 cleanup: cleanup.sh
 expect:
-- contains: "VIOLATING: resource-beta-\\d+"
-- notContains: "VIOLATING: resource-alpha-\\d+"
+%s
 isolation: cluster
 timeout: 5m
-`, indent(prompt, "    "))
+`, indent(prompt, "    "), strings.Join(expectLines, "\n"))
 	os.WriteFile(filepath.Join(outDir, "task.yaml"), []byte(taskYAML), 0644)
 
 	// Write suite.yaml
@@ -188,14 +179,47 @@ timeout: 5m
 	writeScripts(outDir, task.TaskID, artifacts)
 
 	if cfg.Repair {
-		result := repairTask(cfg, outDir, task.TaskID)
-		if result.Status == "error" {
-			return &result, fmt.Errorf("repair %s: %s", task.TaskID, result.Error)
+		results, err := repairTask(cfg, outDir, task.TaskID)
+		if err != nil {
+			return results, fmt.Errorf("repair %s: %v", task.TaskID, err)
 		}
-		return &result, nil
+		return results, nil
 	}
 
 	return nil, nil
+}
+
+func caseKinds(artifacts TaskArtifacts) []string {
+	kinds := map[string]bool{}
+	for _, manifest := range artifacts.Manifests {
+		if manifest.Kind != "" {
+			kinds[manifest.Kind] = true
+		}
+	}
+	return sortedKeys(kinds)
+}
+
+func isPodOnly(kinds []string) bool {
+	return len(kinds) == 1 && kinds[0] == "Pod"
+}
+
+func buildExpectations(artifacts TaskArtifacts) (contains []string, notContains []string) {
+	containsSet := map[string]bool{}
+	notContainsSet := map[string]bool{}
+
+	for _, manifest := range artifacts.Manifests {
+		if manifest.Name == "" {
+			continue
+		}
+		switch manifest.Expected {
+		case "beta":
+			containsSet[manifest.Name] = true
+		case "alpha":
+			notContainsSet[manifest.Name] = true
+		}
+	}
+
+	return sortedKeys(containsSet), sortedKeys(notContainsSet)
 }
 
 func writeSuite(outDir string, task TaskMetadata, artifacts TaskArtifacts) {
@@ -209,7 +233,6 @@ func writeSuite(outDir string, task TaskMetadata, artifacts TaskArtifacts) {
 			cases = append(cases, map[string]interface{}{
 				"name":       c.Name,
 				"object":     cf,
-				"inventory":  artifacts.InventoryFiles[c.Name],
 				"assertions": []map[string]interface{}{{"violations": violations}},
 			})
 		}
@@ -242,55 +265,25 @@ func writeScripts(outDir, taskID string, artifacts TaskArtifacts) {
 		fmt.Fprintf(&nsCleanup, "kubectl delete namespace %q --ignore-not-found\n", n)
 	}
 
-	var resCleanup strings.Builder
-	for _, r := range artifacts.ClusterResources {
-		fmt.Fprintf(&resCleanup, "kubectl delete %s %q --ignore-not-found\n", r.Kind, r.Name)
-	}
-
 	setup := fmt.Sprintf(`#!/usr/bin/env bash
 set -euo pipefail
 shopt -s nullglob
 TASK_NAMESPACE=%q
 %s
 ARTIFACTS_DIR="$(dirname "$0")/artifacts"
-# Apply inventory first (dependencies), then alpha/beta resources
-for file in "$ARTIFACTS_DIR"/inventory-*.yaml; do
-  kubectl apply -f "$file"
-done
+# Apply alpha/beta pod resources
 for file in "$ARTIFACTS_DIR"/alpha-*.yaml; do
   kubectl apply -f "$file"
 done
 for file in "$ARTIFACTS_DIR"/beta-*.yaml; do
   kubectl apply -f "$file"
 done
-for file in "$ARTIFACTS_DIR"/inventory-*.yaml "$ARTIFACTS_DIR"/alpha-*.yaml "$ARTIFACTS_DIR"/beta-*.yaml; do
-  kind="$(kubectl get -f "$file" -o jsonpath='{.kind}')"
-  case "$kind" in
-    Deployment|StatefulSet|DaemonSet)
-      kubectl rollout status -f "$file" --timeout=120s
-      ;;
-    ReplicaSet)
-      kubectl wait --for=condition=Available --timeout=120s -f "$file"
-      ;;
-    Pod)
-      kubectl wait --for=condition=Ready --timeout=120s -f "$file"
-      ;;
-    Job)
-      kubectl wait --for=condition=Complete --timeout=120s -f "$file"
-      ;;
-  esac
-done
-# Show deployed resources for debugging
-kubectl get all -n "$TASK_NAMESPACE" 2>/dev/null || true
-kubectl get ingress -n "$TASK_NAMESPACE" 2>/dev/null || true
-kubectl get hpa -n "$TASK_NAMESPACE" 2>/dev/null || true
-kubectl get pdb -n "$TASK_NAMESPACE" 2>/dev/null || true
-kubectl get clusterrolebinding 2>/dev/null | head -n 20 || true
+kubectl get pods -n "$TASK_NAMESPACE" 2>/dev/null || true
 `, ns, strings.TrimSpace(nsSetup.String()))
-
-	cleanup := fmt.Sprintf("#!/usr/bin/env bash\nset -euo pipefail\n%s%s", nsCleanup.String(), resCleanup.String())
-
 	os.WriteFile(filepath.Join(outDir, "setup.sh"), []byte(setup), 0755)
+
+	cleanup := fmt.Sprintf("#!/usr/bin/env bash\nset -euo pipefail\n%s", nsCleanup.String())
+
 	os.WriteFile(filepath.Join(outDir, "cleanup.sh"), []byte(cleanup), 0755)
 }
 

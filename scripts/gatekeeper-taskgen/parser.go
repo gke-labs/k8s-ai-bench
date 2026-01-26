@@ -51,15 +51,10 @@ func ParseSuites(libraryRoot string) (map[string]TaskMetadata, error) {
 				if expected == "" {
 					continue
 				}
-				invPaths := make([]string, len(c.Inventory))
-				for i, inv := range c.Inventory {
-					invPaths[i] = filepath.Join(suiteDir, inv)
-				}
 				meta.Cases = append(meta.Cases, TaskCase{
-					Name:           c.Name,
-					Expected:       expected,
-					ObjectPath:     filepath.Join(suiteDir, c.Object),
-					InventoryPaths: invPaths,
+					Name:       c.Name,
+					Expected:   expected,
+					ObjectPath: filepath.Join(suiteDir, c.Object),
 				})
 			}
 

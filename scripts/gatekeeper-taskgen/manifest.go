@@ -16,11 +16,12 @@ func GenerateManifests(task TaskMetadata, outDir string) (TaskArtifacts, PromptC
 
 	defaultNS := "gk-" + task.TaskID
 	artifacts := TaskArtifacts{
-		CaseFiles:      map[string][]string{},
-		InventoryFiles: map[string][]string{},
+		CaseFiles: map[string][]string{},
 	}
-	alphaIdx, betaIdx, invIdx := 1, 1, 1
+	alphaIdx, betaIdx := 1, 1
+	alphaFileIdx, betaFileIdx := 1, 1
 	nsSet := map[string]bool{defaultNS: true}
+	nameRegistry := newNameRegistry()
 
 	var templateTitle, templateDesc, templateYAML, constraintYAML string
 	var alphaExamples, betaExamples []string
@@ -54,47 +55,16 @@ func GenerateManifests(task TaskMetadata, outDir string) (TaskArtifacts, PromptC
 			continue
 		}
 
-		// Load inventory docs
-		var invDocs []map[string]interface{}
-		for _, inv := range c.InventoryPaths {
-			if docs, _ := readYAMLDocs(inv); len(docs) > 0 && !isAdmissionReview(docs[0]) {
-				invDocs = append(invDocs, docs[0])
-			}
-		}
-
-		// Build name map and collect docs
-		nameMap := newNameMap()
-		nameAllocator := newNameAllocator()
+		// Build docs
 		type docInfo struct {
 			doc     map[string]interface{}
 			newName string
-			isInv   bool
 		}
 		var allDocs []docInfo
 
-		for _, doc := range invDocs {
-			kind := getStr(doc, "kind")
-			namespace := ""
-			if !isClusterScoped(kind) {
-				namespace = defaultNS
-			}
-			origName := getStr(doc, "metadata", "name")
-			baseName := origName
-			if baseName == "" {
-				baseName = fmt.Sprintf("resource-inventory-%02d", invIdx)
-			}
-			name, _ := nameAllocator.allocate(kind, namespace, baseName)
-			nameMap.set(kind, namespace, origName, name)
-			invIdx++
-			allDocs = append(allDocs, docInfo{doc, name, true})
-		}
-
 		for _, doc := range caseDocs[:1] {
 			kind := getStr(doc, "kind")
-			namespace := ""
-			if !isClusterScoped(kind) {
-				namespace = defaultNS
-			}
+			namespace := defaultNS
 			origName := getStr(doc, "metadata", "name")
 			var name string
 			if c.Expected == "alpha" {
@@ -108,15 +78,13 @@ func GenerateManifests(task TaskMetadata, outDir string) (TaskArtifacts, PromptC
 			if baseName == "" {
 				baseName = name
 			}
-			name, _ = nameAllocator.allocate(kind, namespace, baseName)
-			nameMap.set(kind, namespace, origName, name)
-			allDocs = append(allDocs, docInfo{doc, name, false})
+			name, _ = nameRegistry.allocate(kind, namespace, baseName)
+			allDocs = append(allDocs, docInfo{doc, name})
 		}
 
 		// Rewrite and save
-		invFileIdx, caseFileIdx := 1, 1
 		for _, d := range allDocs {
-			rewriteManifest(d.doc, d.newName, defaultNS, nameMap, task.TaskID, c.Expected, d.isInv)
+			rewriteManifest(d.doc, d.newName, defaultNS, task.TaskID, c.Expected)
 			kind := getStr(d.doc, "kind")
 			ns := getStr(d.doc, "metadata", "namespace")
 			if ns != "" {
@@ -124,64 +92,44 @@ func GenerateManifests(task TaskMetadata, outDir string) (TaskArtifacts, PromptC
 			}
 
 			var fileName string
-			if d.isInv {
-				fileName = fmt.Sprintf("inventory-%02d.yaml", invFileIdx)
+			if c.Expected == "alpha" {
+				fileName = fmt.Sprintf("alpha-%02d.yaml", alphaFileIdx)
+				alphaFileIdx++
 			} else {
-				fileName = fmt.Sprintf("%s-%02d.yaml", c.Expected, caseFileIdx)
+				fileName = fmt.Sprintf("beta-%02d.yaml", betaFileIdx)
+				betaFileIdx++
 			}
 			relPath := "artifacts/" + fileName
 
 			data, _ := yaml.Marshal(d.doc)
 			os.WriteFile(filepath.Join(outDir, relPath), data, 0644)
 
-			if !d.isInv {
-				if c.Expected == "alpha" && len(alphaExamples) < 2 {
-					alphaExamples = append(alphaExamples, string(data))
-				} else if c.Expected == "beta" && len(betaExamples) < 2 {
-					betaExamples = append(betaExamples, string(data))
-				}
+			if c.Expected == "alpha" && len(alphaExamples) < 2 {
+				alphaExamples = append(alphaExamples, string(data))
+			} else if c.Expected == "beta" && len(betaExamples) < 2 {
+				betaExamples = append(betaExamples, string(data))
 			}
 
 			artifacts.Manifests = append(artifacts.Manifests, TaskManifest{
-				Path:          filepath.Join(outDir, relPath),
-				RelPath:       relPath,
-				Doc:           d.doc,
-				Inventory:     d.isInv,
-				CaseName:      c.Name,
-				Expected:      c.Expected,
-				Kind:          kind,
-				Name:          d.newName,
-				Namespace:     ns,
-				ClusterScoped: isClusterScoped(kind),
+				Path:      filepath.Join(outDir, relPath),
+				RelPath:   relPath,
+				Doc:       d.doc,
+				CaseName:  c.Name,
+				Expected:  c.Expected,
+				Kind:      kind,
+				Name:      d.newName,
+				Namespace: ns,
 			})
 
-			if d.isInv {
-				invFileIdx++
-				artifacts.InventoryFiles[c.Name] = append(artifacts.InventoryFiles[c.Name], relPath)
-			} else {
-				caseFileIdx++
-				artifacts.CaseFiles[c.Name] = append(artifacts.CaseFiles[c.Name], relPath)
-			}
-
-			if isClusterScoped(kind) {
-				artifacts.ClusterResources = append(artifacts.ClusterResources, ClusterResource{kind, d.newName})
-			}
+			artifacts.CaseFiles[c.Name] = append(artifacts.CaseFiles[c.Name], relPath)
 		}
 	}
 
 	artifacts.Namespaces = sortedKeys(nsSet)
 
 	namespacedKindsSet := map[string]bool{}
-	clusterKindsSet := map[string]bool{}
 	for _, manifest := range artifacts.Manifests {
-		if manifest.Inventory {
-			continue
-		}
-		if manifest.ClusterScoped {
-			clusterKindsSet[manifest.Kind] = true
-		} else {
-			namespacedKindsSet[manifest.Kind] = true
-		}
+		namespacedKindsSet[manifest.Kind] = true
 	}
 
 	promptCtx := PromptContext{
@@ -194,7 +142,7 @@ func GenerateManifests(task TaskMetadata, outDir string) (TaskArtifacts, PromptC
 		BetaExamples:    betaExamples,
 		Namespace:       defaultNS,
 		NamespacedKinds: sortedKeys(namespacedKindsSet),
-		ClusterKinds:    sortedKeys(clusterKindsSet),
+		ClusterKinds:    []string{},
 	}
 
 	return artifacts, promptCtx, nil
@@ -231,10 +179,6 @@ func isDeployable(doc map[string]interface{}) bool {
 		}
 	}
 	return true
-}
-
-func isClusterScoped(kind string) bool {
-	return kind == "Namespace" || kind == "ClusterRole" || kind == "ClusterRoleBinding" || kind == "StorageClass"
 }
 
 // YAML helpers
