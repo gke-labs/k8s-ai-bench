@@ -30,14 +30,14 @@ import (
 var defaultSkipList = []string{
 	"allowed-ip",
 	"block-endpoint-default-role",
-	"block-loadbalancer-services",
+	"block-endpoint-default-role",
 	"block-wildcard-ingress",
 	"disallow-anonymous",
-	"horizontal-pod-autoscaler",
+	"disallow-anonymous",
 	"must-have-owner",
 	"must-have-set-of-annotations",
 	"pod-disruption-budget",
-	"replica-limit",
+	"pod-disruption-budget",
 	"storageclass",
 	"storageclass-allowlist",
 	"tls-optional",
@@ -90,10 +90,6 @@ func main() {
 }
 
 func run(cfg Config) error {
-	if cfg.Repair {
-		return runRepair(cfg)
-	}
-
 	if cfg.VerifyOnly {
 		return verifyTasks(cfg.OutputDir)
 	}
@@ -133,6 +129,10 @@ func run(cfg Config) error {
 			// Don't fail the entire run if verification fails, just report it
 			fmt.Fprintf(os.Stderr, "Verification failed: %v\n", err)
 		}
+	}
+
+	if cfg.Repair {
+		return runRepair(cfg)
 	}
 
 	return nil
@@ -330,6 +330,10 @@ shopt -s nullglob
 TASK_NAMESPACE=%q
 %s
 ARTIFACTS_DIR="$(dirname "$0")/artifacts"
+# Apply inventory
+for file in "$ARTIFACTS_DIR"/inventory-*.yaml; do
+  kubectl apply -f "$file"
+done
 # Apply alpha/beta pod resources
 for file in "$ARTIFACTS_DIR"/alpha-*.yaml; do
   kubectl apply -f "$file"

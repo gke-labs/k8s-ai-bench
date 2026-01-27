@@ -69,6 +69,7 @@ func ParseSuites(libraryRoot string) (map[string]TaskMetadata, error) {
 					Name:       c.Name,
 					Expected:   expected,
 					ObjectPath: filepath.Join(suiteDir, c.Object),
+					Inventory:  resolvePaths(suiteDir, c.Inventory),
 				})
 			}
 
@@ -118,4 +119,12 @@ func hasViolations(v any) bool {
 		return val > 0
 	}
 	return false
+}
+
+func resolvePaths(base string, paths []string) []string {
+	var resolved []string
+	for _, p := range paths {
+		resolved = append(resolved, filepath.Join(base, p))
+	}
+	return resolved
 }

@@ -87,11 +87,23 @@ func findArtifacts(outDir string) ([]string, []string, error) {
 func buildRepairPrompt(targetPath, targetRole, constraintYAML, templateYAML, targetYAML string) string {
 	var b strings.Builder
 
-	b.WriteString("Edit ONLY the target manifest. Do not modify any other files.\n")
-	b.WriteString(fmt.Sprintf("Target role: %s\n", targetRole))
+	b.WriteString("# Context\n")
+	b.WriteString("You are a Kubernetes Expert optimizing a benchmarking suite.\n")
+	b.WriteString("We have a set of manifests used to test Gatekeeper constraints.\n")
+	b.WriteString("Your task is to repair a specific manifest to either satisfy or violate a constraint, as requested.\n\n")
+
+	b.WriteString("# Goal\n")
+	b.WriteString(fmt.Sprintf("Target Role: %s\n", targetRole))
+	b.WriteString("1. Ensure the manifest fulfills the Target Role.\n")
+	b.WriteString("2. Minimize cluster load: Use minimal resource values (cpu: 1m, memory: 1Mi) unless the constraint specifically requires more.\n")
+	b.WriteString("3. Maintain validity: Ensure the manifest remains a valid Kubernetes object.\n\n")
+
+	b.WriteString("# Instructions\n")
+	b.WriteString("1. Edit ONLY the target manifest. Do not modify any other files.\n")
+	fmt.Fprintf(&b, "Target path (for reference): %s\n", targetPath)
 	b.WriteString("Keep metadata.name, metadata.namespace, and all labels unchanged.\n")
 	b.WriteString("Do not change kind, apiVersion, or container names.\n")
-	b.WriteString("Prefer the smallest possible resource values (cpu: 1m, memory: 1Mi, ephemeral-storage: 1Mi) while satisfying the role.\n")
+	b.WriteString("Prefer the smallest possible resource values (cpu: 1m, memory: 1Mi, ephemeral-storage: 1Mi) while satisfying the constraint.\n")
 	b.WriteString("If resource values must exceed a max to violate, set them just above the limit (never exactly equal).\n")
 	b.WriteString("If the constraint enforces required resources, alpha must include all required keys; beta must omit at least one required key.\n")
 	b.WriteString("If the constraint enforces ratios, alpha should have limits == requests; beta should have limits > requests so the ratio exceeds the max.\n")
@@ -128,7 +140,7 @@ func repairManifest(cfg Config, taskID, targetPath, targetRole, constraintYAML, 
 
 	normalizedOriginal := strings.TrimSpace(string(targetYAML))
 	if shouldNormalizeResources(constraintYAML) {
-		if out, err := normalizeResourceValues(normalizedOriginal); err == nil {
+		if out, err := normalizeYAML(normalizedOriginal); err == nil {
 			normalizedOriginal = out
 		}
 	}
@@ -156,7 +168,7 @@ func repairManifest(cfg Config, taskID, targetPath, targetRole, constraintYAML, 
 
 	finalContent := trimmed
 	if shouldNormalizeResources(constraintYAML) {
-		if normalized, err := normalizeResourceValues(trimmed); err == nil {
+		if normalized, err := normalizeYAML(trimmed); err == nil {
 			finalContent = normalized
 		}
 	}

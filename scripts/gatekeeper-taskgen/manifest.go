@@ -97,7 +97,7 @@ func GenerateManifests(task TaskMetadata, outDir string) (TaskArtifacts, PromptC
 
 		// Rewrite and save
 		for _, d := range allDocs {
-			rewriteManifest(d.doc.Object, d.newName, defaultNS, task.TaskID, c.Expected)
+			rewriteManifest(d.doc.Object, d.newName, defaultNS, task.TaskID, c.Expected, constraintYAML)
 			kind := d.doc.Kind()
 			ns := d.doc.Namespace()
 			if ns != "" {
@@ -135,6 +135,40 @@ func GenerateManifests(task TaskMetadata, outDir string) (TaskArtifacts, PromptC
 			})
 
 			artifacts.CaseFiles[c.Name] = append(artifacts.CaseFiles[c.Name], relPath)
+		}
+
+		// Process Inventory
+		for i, invPath := range c.Inventory {
+			invDocs, _ := readYAMLDocs(invPath)
+			for j, doc := range invDocs {
+				res := NewResource(doc)
+				// KEEP ORIGINAL NAME for inventory to support references
+				name := res.Name()
+				if name == "" {
+					name = fmt.Sprintf("inventory-%s-%d-%d", c.Name, i, j)
+				}
+
+				// Rewrite with original name
+				rewriteManifest(doc, name, defaultNS, task.TaskID, "inventory", constraintYAML)
+
+				// Save
+				fileName := fmt.Sprintf("inventory-%s-%d-%d.yaml", c.Name, i, j)
+				relPath := "artifacts/" + fileName
+				data, _ := yaml.Marshal(doc)
+				os.WriteFile(filepath.Join(outDir, relPath), data, 0644)
+
+				artifacts.Manifests = append(artifacts.Manifests, TaskManifest{
+					Path:      filepath.Join(outDir, relPath),
+					RelPath:   relPath,
+					Doc:       doc,
+					CaseName:  c.Name,
+					Expected:  "inventory",
+					Kind:      res.Kind(),
+					Name:      name,
+					Namespace: defaultNS,
+				})
+				artifacts.CaseFiles[c.Name] = append(artifacts.CaseFiles[c.Name], relPath)
+			}
 		}
 	}
 
@@ -193,17 +227,17 @@ func isDeployable(res *Resource) bool {
 
 // YAML helpers
 
-func readYAMLDocs(path string) ([]map[string]interface{}, error) {
+func readYAMLDocs(path string) ([]map[string]any, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	var results []map[string]interface{}
-	for _, doc := range bytes.Split(data, []byte("---")) {
+	var results []map[string]any
+	for doc := range bytes.SplitSeq(data, []byte("---")) {
 		if len(bytes.TrimSpace(doc)) == 0 {
 			continue
 		}
-		var obj map[string]interface{}
+		var obj map[string]any
 		if yaml.Unmarshal(doc, &obj) == nil {
 			results = append(results, obj)
 		}

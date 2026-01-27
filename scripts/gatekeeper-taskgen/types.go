@@ -46,6 +46,7 @@ type SuiteTest struct {
 type SuiteCase struct {
 	Name       string
 	Object     string
+	Inventory  []string
 	Assertions []SuiteAssertion
 }
 
@@ -59,6 +60,7 @@ type TaskCase struct {
 	Name       string
 	Expected   string // "alpha" (compliant) or "beta" (violating)
 	ObjectPath string
+	Inventory  []string
 }
 
 // TaskMetadata holds all info needed to generate a task

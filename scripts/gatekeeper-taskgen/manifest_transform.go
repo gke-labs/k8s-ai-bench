@@ -27,7 +27,7 @@ type manifestRewriteContext struct {
 	expected string
 }
 
-func rewriteManifest(doc map[string]any, name, ns, taskID, expected string) {
+func rewriteManifest(doc map[string]any, name, ns, taskID, expected, constraintYAML string) {
 	res := NewResource(doc)
 	ctx := manifestRewriteContext{
 		name:     name,
@@ -38,6 +38,10 @@ func rewriteManifest(doc map[string]any, name, ns, taskID, expected string) {
 
 	applyIdentity(res, ctx)
 	applyDeployabilityFixes(res)
+
+	if shouldNormalizeResources(constraintYAML) {
+		applyNormalization(res)
+	}
 }
 
 func applyIdentity(res *Resource, ctx manifestRewriteContext) {
@@ -124,7 +128,7 @@ func podSpecForWorkload(res *Resource) map[string]any {
 func shouldNormalizeResources(constraintYAML string) bool {
 	kind := constraintKind(constraintYAML)
 	switch kind {
-	case "K8sContainerLimits", "K8sContainerRequests", "K8sContainerRatios":
+	case "K8sContainerLimits", "K8sContainerRequests", "K8sContainerRatios", "K8sRequiredResources", "K8sContainerEphemeralStorageLimit":
 		return false
 	default:
 		return true
@@ -142,15 +146,28 @@ func constraintKind(raw string) string {
 	return ""
 }
 
-func normalizeResourceValues(raw string) (string, error) {
+func normalizeYAML(raw string) (string, error) {
 	var obj map[string]any
 	if err := yaml.Unmarshal([]byte(raw), &obj); err != nil {
 		return raw, err
 	}
+	res := NewResource(obj)
+	applyNormalization(res)
+	out, err := yaml.Marshal(res.Object)
+	if err != nil {
+		return raw, err
+	}
+	return strings.TrimSpace(string(out)), nil
+}
 
-	spec, _ := obj["spec"].(map[string]any)
+func applyNormalization(res *Resource) {
+	podSpec := podSpecForWorkload(res)
+	if podSpec == nil {
+		return
+	}
+
 	for _, field := range []string{"containers", "initContainers"} {
-		if list, ok := spec[field].([]any); ok {
+		if list, ok := podSpec[field].([]any); ok {
 			for _, item := range list {
 				container, ok := item.(map[string]any)
 				if !ok {
@@ -179,10 +196,4 @@ func normalizeResourceValues(raw string) (string, error) {
 			}
 		}
 	}
-
-	out, err := yaml.Marshal(obj)
-	if err != nil {
-		return raw, err
-	}
-	return strings.TrimSpace(string(out)), nil
 }
