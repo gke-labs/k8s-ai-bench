@@ -41,7 +41,7 @@ func rewriteManifest(doc map[string]any, name, ns, taskID, expected, constraintY
 	applyDeployabilityFixes(res)
 
 	if shouldNormalizeResources(constraintYAML) {
-		applyNormalization(res)
+		enforceMinimalResources(res)
 	}
 }
 
@@ -155,13 +155,20 @@ func constraintKind(raw string) string {
 	return ""
 }
 
-func normalizeYAML(raw string) (string, error) {
+func normalizeYAML(raw, constraintYAML string) (string, error) {
 	var obj map[string]any
 	if err := yaml.Unmarshal([]byte(raw), &obj); err != nil {
 		return raw, err
 	}
 	res := NewResource(obj)
-	applyNormalization(res)
+	
+	if shouldNormalizeResources(constraintYAML) {
+		enforceMinimalResources(res)
+	}
+	if shouldNormalizeReplicas(constraintYAML) {
+		enforceMinimalReplicas(res)
+	}
+
 	out, err := yaml.Marshal(res.Object)
 	if err != nil {
 		return raw, err
@@ -169,7 +176,7 @@ func normalizeYAML(raw string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-func applyNormalization(res *Resource) {
+func enforceMinimalResources(res *Resource) {
 	podSpec := podSpecForWorkload(res)
 	if podSpec == nil {
 		return
@@ -177,32 +184,62 @@ func applyNormalization(res *Resource) {
 
 	for _, field := range []string{"containers", "initContainers"} {
 		if list, ok := podSpec[field].([]any); ok {
-			for _, item := range list {
+			for i, item := range list {
 				container, ok := item.(map[string]any)
 				if !ok {
 					continue
 				}
-				resources, _ := container["resources"].(map[string]any)
-				if len(resources) == 0 {
-					continue
+
+				if resources, ok := container["resources"].(map[string]any); ok {
+					if limits, ok := resources["limits"].(map[string]any); ok {
+						if _, ok := limits["cpu"]; ok {
+							limits["cpu"] = "1m"
+						}
+						if _, ok := limits["memory"]; ok {
+							limits["memory"] = "1Mi"
+						}
+					}
+					if requests, ok := resources["requests"].(map[string]any); ok {
+						if _, ok := requests["cpu"]; ok {
+							requests["cpu"] = "1m"
+						}
+						if _, ok := requests["memory"]; ok {
+							requests["memory"] = "1Mi"
+						}
+					}
 				}
-				if limits, ok := resources["limits"].(map[string]any); ok {
-					if _, ok := limits["cpu"]; ok {
-						limits["cpu"] = "1m"
-					}
-					if _, ok := limits["memory"]; ok {
-						limits["memory"] = "1Mi"
-					}
-				}
-				if requests, ok := resources["requests"].(map[string]any); ok {
-					if _, ok := requests["cpu"]; ok {
-						requests["cpu"] = "1m"
-					}
-					if _, ok := requests["memory"]; ok {
-						requests["memory"] = "1Mi"
-					}
-				}
+				
+				// Update list item
+				list[i] = container
 			}
 		}
 	}
 }
+
+var replicaWorkloads = []string{
+	"Deployment",
+	"StatefulSet",
+	"ReplicaSet",
+	"ReplicationController",
+}
+
+func enforceMinimalReplicas(res *Resource) {
+	if slices.Contains(replicaWorkloads, res.Kind()) {
+		spec := res.Spec()
+		if spec == nil {
+			return
+		}
+		if _, ok := spec["replicas"]; ok {
+			spec["replicas"] = 1
+		}
+	}
+}
+
+func shouldNormalizeReplicas(constraintYAML string) bool {
+	if constraintYAML == "" {
+		return true
+	}
+	kind := constraintKind(constraintYAML)
+	return !strings.Contains(strings.ToLower(kind), "replica")
+}
+

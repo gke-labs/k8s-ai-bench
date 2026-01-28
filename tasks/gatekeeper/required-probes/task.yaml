@@ -1,8 +1,10 @@
 script:
 - prompt: |
-    I need your help identifying Kubernetes Pods that don't have both readiness and liveness probes defined. Please check all Pods in the gk-required-probes Namespace and tell me which ones are missing either probe.
+    Hey, I need your help checking some Kubernetes Pods in the gk-required-probes Namespace.
+    We require all Pods to have at least one readiness and/or liveness probe defined.
+    Can you please identify any Pods in that Namespace that are missing these probes?
     
-    For each violating resource, print exactly one line:
+    For each violating resource, please print one line in the format:
     VIOLATING: <resource name>
 setup: setup.sh
 cleanup: cleanup.sh

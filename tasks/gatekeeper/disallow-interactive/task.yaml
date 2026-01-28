@@ -1,8 +1,8 @@
 script:
 - prompt: |
-    I need your help auditing a Kubernetes namespace. I want to ensure that no Pods in the gk-disallow-interactive namespace are configured to allow interactive terminal sessions. Specifically, pods should not have `spec.tty` and `spec.stdin` set to true. Can you please inspect all Pods in the gk-disallow-interactive namespace and identify any that violate this policy?
+    I need you to check the Pods in the gk-disallow-interactive Namespace and tell me which ones are configured to allow interactive TTY connections. A Pod violates the policy if its containers have `spec.tty` and `spec.stdin` both set to true. Please list only the names of the violating Pods.
     
-    Report any violating pod by printing a single line with the format: VIOLATING: <resource name>
+    VIOLATING: <resource name>
 setup: setup.sh
 cleanup: cleanup.sh
 expect:

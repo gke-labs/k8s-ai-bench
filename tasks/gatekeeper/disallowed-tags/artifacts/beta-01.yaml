@@ -11,5 +11,5 @@ spec:
     - run
     - --server
     - --addr=localhost:8080
-    image: openpolicyagent/opa:latest
+    image: openpolicyagent/opa
     name: opa

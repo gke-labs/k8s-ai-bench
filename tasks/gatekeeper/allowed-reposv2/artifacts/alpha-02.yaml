@@ -12,9 +12,4 @@ spec:
     resources:
       limits:
         cpu: 1m
-        ephemeral-storage: 1Mi
-        memory: 1Mi
-      requests:
-        cpu: 1m
-        ephemeral-storage: 1Mi
         memory: 1Mi

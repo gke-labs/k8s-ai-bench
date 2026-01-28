@@ -1,8 +1,8 @@
 script:
 - prompt: |
-    Hey, can you check the Pods in the gk-disallowed-tags namespace and let me know which ones are using container images without explicit tags, or are using the 'latest' tag?
+    Hey, can you check the Pods in the gk-disallowed-tags Namespace and let me know which ones are using container images without specifying a tag, or using the tag "latest"? I need to know which Pods are violating this policy.
     
-    Report each violating Pod by name using this format:
+    Please list the names of any violating resources in the format:
     VIOLATING: <resource name>
 setup: setup.sh
 cleanup: cleanup.sh

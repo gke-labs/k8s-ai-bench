@@ -6,7 +6,11 @@ kubectl delete namespace "gk-memory-ratio-only" --ignore-not-found
 kubectl create namespace "gk-memory-ratio-only"
 kubectl wait --for=jsonpath='{.status.phase}'=Active --timeout=120s namespace "gk-memory-ratio-only"
 ARTIFACTS_DIR="$(dirname "$0")/artifacts"
-# Apply alpha/beta pod resources
+# Apply inventory
+for file in "$ARTIFACTS_DIR"/inventory-*.yaml; do
+  kubectl apply -f "$file"
+done
+# Apply alpha/beta resources
 for file in "$ARTIFACTS_DIR"/alpha-*.yaml; do
   kubectl apply -f "$file"
 done

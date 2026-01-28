@@ -1,11 +1,6 @@
 script:
 - prompt: |
-    I need your help checking some Kubernetes Pods in the gk-container-limits namespace.
-    The policy we're enforcing requires all containers to specify both memory and CPU limits, and the limits cannot exceed CPU 200m and memory 1Gi.
-    Can you please identify any Pods that violate this policy and report their names?
-    
-    Report all violations in the following format:
-    VIOLATING: <resource name>
+    I need your help auditing our Kubernetes cluster. We're enforcing a policy that requires all containers to have memory and CPU limits set, and these limits can't exceed certain maximum values. Specifically, the maximum CPU limit is 200m and the maximum memory limit is 1Gi. Can you check all the Pods in the gk-container-limits Namespace and tell me which ones violate this policy? For each violating resource, please print exactly one line in the format: VIOLATING: <resource name>
 setup: setup.sh
 cleanup: cleanup.sh
 expect:

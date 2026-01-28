@@ -1,8 +1,10 @@
 script:
 - prompt: |
-    I need your help identifying Kubernetes Pods in the gk-allowed-reposv2 Namespace that don't comply with our image repository policy. The policy requires all container images to come from a specified list of allowed repositories, including exact matches and glob-like patterns such as openpolicyagent/*, myregistry.azurecr.io/*, mydockerhub/*, ubuntu:20.14 and 123456789123.dkr.ecr.eu-west-1.amazonaws.com/postgres.
+    I need you to check the Pods in the gk-allowed-reposv2 namespace for me. The container images in those pods must come from an approved list of repositories. Specifically, the image name must start with openpolicyagent/*, myregistry.azurecr.io/*, mydockerhub/*, ubuntu:20.14, or 123456789123.dkr.ecr.eu-west-1.amazonaws.com/postgres.
     
-    Can you please check all Pods in the gk-allowed-reposv2 Namespace and tell me which ones are using images from disallowed repositories?  For each violating resource, please print exactly one line: VIOLATING: <resource name>
+    Tell me the names of any Pods that use images from other repositories.
+    
+    Report the violating resource names in the format: VIOLATING: <resource name>
 setup: setup.sh
 cleanup: cleanup.sh
 expect:

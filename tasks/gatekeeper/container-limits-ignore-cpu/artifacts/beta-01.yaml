@@ -15,4 +15,4 @@ spec:
     name: opa
     resources:
       limits:
-        memory: 1025Mi
+        memory: 2Gi

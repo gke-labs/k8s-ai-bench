@@ -1,0 +1,13 @@
+script:
+- prompt: |
+    Hey, could you check the Ingress resources in the gk-tls-optional namespace? We need to make sure that all Ingresses either have TLS configured or explicitly disable HTTP by setting the `kubernetes.io/ingress.allow-http` annotation to `false`. Let me know which Ingresses violate this policy.
+    
+    Report each violation you find using this format:
+    VIOLATING: <resource name>
+setup: setup.sh
+cleanup: cleanup.sh
+expect:
+- contains: "VIOLATING: resource-002"
+- notContains: "VIOLATING: resource-001"
+isolation: cluster
+timeout: 5m

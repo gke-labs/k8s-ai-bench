@@ -93,10 +93,9 @@ func buildRepairPrompt(targetPath, targetRole, constraintYAML, templateYAML, tar
 	b.WriteString("Your task is to repair a specific manifest to either satisfy or violate a constraint, as requested.\n\n")
 
 	b.WriteString("# Goal\n")
-	b.WriteString(fmt.Sprintf("Target Role: %s\n", targetRole))
+	fmt.Fprintf(&b, "Target Role: %s\n", targetRole)
 	b.WriteString("1. Ensure the manifest fulfills the Target Role.\n")
-	b.WriteString("2. Minimize cluster load: Use minimal resource values (cpu: 1m, memory: 1Mi) unless the constraint specifically requires more.\n")
-	b.WriteString("3. Maintain validity: Ensure the manifest remains a valid Kubernetes object.\n\n")
+	b.WriteString("2. Maintain validity: Ensure the manifest remains a valid Kubernetes object.\n\n")
 
 	b.WriteString("# Instructions\n")
 	b.WriteString("1. Edit ONLY the target manifest. Do not modify any other files.\n")
@@ -109,7 +108,7 @@ func buildRepairPrompt(targetPath, targetRole, constraintYAML, templateYAML, tar
 	b.WriteString("If the constraint enforces ratios, alpha should have limits == requests; beta should have limits > requests so the ratio exceeds the max.\n")
 	b.WriteString("Do not add or remove containers unless required to satisfy the policy.\n")
 	b.WriteString("Return ONLY the full updated YAML for the target manifest. Do not return a diff.\n")
-	b.WriteString(fmt.Sprintf("Target path (for reference): %s\n", targetPath))
+	fmt.Fprintf(&b, "Target path (for reference) %s\n", targetPath)
 	b.WriteString("If the target already satisfies the role with minimal values, respond with NO_CHANGES.\n\n")
 
 	appendYAMLSection(&b, "Constraint", constraintYAML, 2000)
@@ -139,8 +138,8 @@ func repairManifest(cfg Config, taskID, targetPath, targetRole, constraintYAML, 
 	}
 
 	normalizedOriginal := strings.TrimSpace(string(targetYAML))
-	if shouldNormalizeResources(constraintYAML) {
-		if out, err := normalizeYAML(normalizedOriginal); err == nil {
+	if shouldNormalizeResources(constraintYAML) || shouldNormalizeReplicas(constraintYAML) {
+		if out, err := normalizeYAML(normalizedOriginal, constraintYAML); err == nil {
 			normalizedOriginal = out
 		}
 	}
@@ -148,12 +147,10 @@ func repairManifest(cfg Config, taskID, targetPath, targetRole, constraintYAML, 
 	cleaned := stripCodeFences(text)
 	if strings.Contains(strings.ToUpper(cleaned), "NO_CHANGES") {
 		if normalizedOriginal != strings.TrimSpace(string(targetYAML)) {
-			// Normalization changed the file even if LLM said NO_CHANGES
-			diff := computeDiff(string(targetYAML), normalizedOriginal)
 			if err := os.WriteFile(targetPath, []byte(normalizedOriginal+"\n"), 0644); err != nil {
 				return RepairResult{TaskID: taskID, Status: "error", FilePath: targetPath, Error: err.Error()}
 			}
-			return RepairResult{TaskID: taskID, Status: "repaired", FilePath: targetPath, Diff: diff}
+			return RepairResult{TaskID: taskID, Status: "no_changes", FilePath: targetPath}
 		}
 		if cfg.Verbose {
 			fmt.Printf("Repair %s: NO_CHANGES (%s)\n", taskID, targetPath)
@@ -167,17 +164,22 @@ func repairManifest(cfg Config, taskID, targetPath, targetRole, constraintYAML, 
 	}
 
 	finalContent := trimmed
-	if shouldNormalizeResources(constraintYAML) {
-		if normalized, err := normalizeYAML(trimmed); err == nil {
+	if shouldNormalizeResources(constraintYAML) || shouldNormalizeReplicas(constraintYAML) {
+		if normalized, err := normalizeYAML(trimmed, constraintYAML); err == nil {
 			finalContent = normalized
 		}
 	}
 
-	if finalContent == strings.TrimSpace(string(targetYAML)) {
+	if finalContent == normalizedOriginal {
+		if normalizedOriginal != strings.TrimSpace(string(targetYAML)) {
+			if err := os.WriteFile(targetPath, []byte(normalizedOriginal+"\n"), 0644); err != nil {
+				return RepairResult{TaskID: taskID, Status: "error", FilePath: targetPath, Error: err.Error()}
+			}
+		}
 		return RepairResult{TaskID: taskID, Status: "no_changes", FilePath: targetPath}
 	}
 
-	diff := computeDiff(string(targetYAML), finalContent)
+	diff := computeDiff(normalizedOriginal, finalContent)
 	if err := os.WriteFile(targetPath, []byte(finalContent+"\n"), 0644); err != nil {
 		return RepairResult{TaskID: taskID, Status: "error", FilePath: targetPath, Error: err.Error()}
 	}

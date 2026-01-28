@@ -1,10 +1,8 @@
 script:
 - prompt: |
-    I need you to check for Pods in the gk-repo-must-not-be-k8s-gcr-io Namespace.
-    Any Pod that uses a container image from a disallowed repository needs to be reported.
-    We don't allow images from repositories starting with "k8s.gcr.io/".
+    I need you to check for any Pods in the gk-repo-must-not-be-k8s-gcr-io Namespace that use container images from disallowed repositories. Specifically, any image that comes from a k8s.gcr.io repository is not allowed. Please list the names of any Pods that violate this policy.
     
-    Please identify the names of any Pods that violate this policy, and report each violation in the format:
+    For each violating resource, print exactly one line:
     VIOLATING: <resource name>
 setup: setup.sh
 cleanup: cleanup.sh

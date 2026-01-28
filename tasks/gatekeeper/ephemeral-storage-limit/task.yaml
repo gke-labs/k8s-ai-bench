@@ -1,8 +1,10 @@
 script:
 - prompt: |
-    I need to check some Kubernetes Pods in the gk-ephemeral-storage-limit Namespace. The policy we're enforcing requires all containers to have an ephemeral storage limit set, and that limit must be no more than 500Mi. Can you identify any Pods in that namespace that violate this policy?
+    I need your help auditing our Kubernetes cluster. We're enforcing a policy that requires all containers to have an ephemeral storage limit set, and that the limit must be no more than 500Mi.
     
-    For each violating resource, print exactly one line:
+    Could you please examine the Pods in the gk-ephemeral-storage-limit Namespace and identify any that violate this policy?
+    
+    For each violating resource, please print exactly one line:
     VIOLATING: <resource name>
 setup: setup.sh
 cleanup: cleanup.sh

@@ -1,8 +1,7 @@
 script:
 - prompt: |
-    I need you to check the Pods in the gk-container-limits-and-requests namespace. Our policy requires all containers to define both CPU and memory limits and requests. Please identify any Pods in that namespace that violate this policy.
+    I need you to check some resources in my Kubernetes cluster. Specifically, I want to make sure all containers in the gk-container-limits-and-requests Namespace have both CPU and memory limits and requests defined. Can you check the Pod resources in that Namespace and tell me which ones violate this policy?
     
-    For each violating resource, print exactly one line in this format:
     VIOLATING: <resource name>
 setup: setup.sh
 cleanup: cleanup.sh

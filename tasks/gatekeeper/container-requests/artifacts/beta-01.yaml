@@ -16,4 +16,5 @@ spec:
     name: opa
     resources:
       requests:
-        memory: 1Mi
+        cpu: 100m
+        memory: 2Gi

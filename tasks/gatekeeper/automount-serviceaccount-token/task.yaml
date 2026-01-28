@@ -1,8 +1,8 @@
 script:
 - prompt: |
-    I need you to check all the Pods in the gk-automount-serviceaccount-token Namespace. The policy we're enforcing is that Pods should not automatically mount service account tokens. Can you identify any Pods that violate this policy and output their names?
+    I need your help auditing the gk-automount-serviceaccount-token Namespace. I want to make sure that all Pods have `automountServiceAccountToken` set to `false`. Can you inspect all the Pods in that Namespace and tell me which ones don't comply with this?
     
-    For each violating resource, print exactly one line:
+    For each violating resource, please print exactly one line in the format:
     VIOLATING: <resource name>
 setup: setup.sh
 cleanup: cleanup.sh

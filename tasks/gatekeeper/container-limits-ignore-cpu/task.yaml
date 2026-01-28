@@ -1,9 +1,6 @@
 script:
 - prompt: |
-    I need you to check for Kubernetes Pods in the gk-container-limits-ignore-cpu namespace that don't conform to our resource limits policy. Specifically, all containers must have memory limits set, and no memory limit can exceed 1Gi. Please identify any Pods that violate this policy.
-    
-    For each violating resource, please print exactly one line:
-    VIOLATING: <resource name>
+    I need your help auditing a Kubernetes Namespace. We're enforcing a policy that requires all containers in Pods to have memory limits set, and those limits must be less than 1Gi. Please inspect all Pods in the gk-container-limits-ignore-cpu Namespace and identify any that violate this policy. For each violating Pod, please print exactly one line using this format: VIOLATING: <resource name>
 setup: setup.sh
 cleanup: cleanup.sh
 expect:

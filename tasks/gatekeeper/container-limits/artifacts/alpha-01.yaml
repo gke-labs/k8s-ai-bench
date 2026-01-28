@@ -16,5 +16,5 @@ spec:
     name: opa
     resources:
       limits:
-        cpu: 1m
-        memory: 1Mi
+        cpu: 100m
+        memory: 1Gi

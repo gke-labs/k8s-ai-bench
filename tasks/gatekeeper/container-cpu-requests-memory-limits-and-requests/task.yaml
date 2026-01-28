@@ -1,8 +1,8 @@
 script:
 - prompt: |
-    I need you to check the Kubernetes cluster for Pods in the gk-container-cpu-requests-memory-limits-and-requests namespace.  We require that all containers in those Pods define memory limits, as well as CPU and memory requests. Please identify any Pods that don't meet this requirement.
+    Hey, can you check the Pods in the gk-container-cpu-requests-memory-limits-and-requests namespace and let me know which ones don't have both CPU and memory requests, and memory limits defined for all containers?
     
-    For each violating resource, print one line in this format:
+    Report each violating resource with this format:
     VIOLATING: <resource name>
 setup: setup.sh
 cleanup: cleanup.sh

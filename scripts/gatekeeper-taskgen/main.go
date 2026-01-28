@@ -22,17 +22,19 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"sort"
 	"strings"
+	"sync"
 
 	"google.golang.org/genai"
 	"sigs.k8s.io/yaml"
 )
 
 var defaultSkipList = []string{
-	"horizontal-pod-autoscaler",
-	"replica-limit",
+	// requires custom storage types
 	"storageclass",
 	"storageclass-allowlist",
+	// deprecated apis
 	"verifydeprecatedapi-1.16",
 	"verifydeprecatedapi-1.22",
 	"verifydeprecatedapi-1.25",
@@ -135,8 +137,12 @@ func runRepair(cfg Config) error {
 
 	var allResults []RepairResult
 	var repaired, errorsCount int
+	var mu sync.Mutex
 
 	fmt.Printf("Starting repair on %s...\n", cfg.OutputDir)
+
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, 10) // Limit concurrency to 10
 
 	for _, id := range sortedKeys(taskMap) {
 		outDir := filepath.Join(cfg.OutputDir, id)
@@ -144,24 +150,43 @@ func runRepair(cfg Config) error {
 			continue
 		}
 
-		results, err := repairTask(cfg, outDir, id)
-		allResults = append(allResults, results...)
+		wg.Add(1)
+		go func(id, outDir string) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
 
-		for _, r := range results {
-			if r.Status == "repaired" {
-				repaired++
-				fmt.Printf("Repaired %s: %s\n", id, filepath.Base(r.FilePath))
-			} else if r.Status == "error" {
-				errorsCount++
-				fmt.Printf("Error repairing %s: %s\n", id, r.Error)
+			results, err := repairTask(cfg, outDir, id)
+
+			mu.Lock()
+			defer mu.Unlock()
+
+			allResults = append(allResults, results...)
+
+			for _, r := range results {
+				switch r.Status {
+				case "repaired":
+					repaired++
+					fmt.Printf("Repaired %s: %s\n", id, filepath.Base(r.FilePath))
+				case "error":
+					errorsCount++
+					fmt.Printf("Error repairing %s: %s\n", id, r.Error)
+				}
 			}
-		}
-		if err != nil && cfg.Verbose {
-			fmt.Printf("Repair warning for %s: %v\n", id, err)
-		}
+			if err != nil && cfg.Verbose {
+				fmt.Printf("Repair warning for %s: %v\n", id, err)
+			}
+		}(id, outDir)
 	}
 
+	wg.Wait()
+
 	fmt.Printf("Repair complete. Repaired: %d, Errors: %d\n", repaired, errorsCount)
+
+	sort.Slice(allResults, func(i, j int) bool {
+		return allResults[i].TaskID < allResults[j].TaskID
+	})
+
 	return writeRepairReport(cfg.OutputDir, allResults)
 }
 

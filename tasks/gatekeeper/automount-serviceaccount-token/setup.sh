@@ -6,7 +6,11 @@ kubectl delete namespace "gk-automount-serviceaccount-token" --ignore-not-found
 kubectl create namespace "gk-automount-serviceaccount-token"
 kubectl wait --for=jsonpath='{.status.phase}'=Active --timeout=120s namespace "gk-automount-serviceaccount-token"
 ARTIFACTS_DIR="$(dirname "$0")/artifacts"
-# Apply alpha/beta pod resources
+# Apply inventory
+for file in "$ARTIFACTS_DIR"/inventory-*.yaml; do
+  kubectl apply -f "$file"
+done
+# Apply alpha/beta resources
 for file in "$ARTIFACTS_DIR"/alpha-*.yaml; do
   kubectl apply -f "$file"
 done

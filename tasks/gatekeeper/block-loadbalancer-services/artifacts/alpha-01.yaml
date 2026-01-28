@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    k8s-ai-bench/task: block-loadbalancer-services
+  name: resource-001
+  namespace: gk-block-loadbalancer-services
+spec:
+  ports:
+  - port: 80
+    targetPort: 80
+  type: ClusterIP

@@ -1,0 +1,13 @@
+script:
+- prompt: |
+    I need you to check the Kubernetes cluster for any Deployments in the gk-replica-limit namespace that don't meet our replica requirements. We require the number of replicas to be between 3 and 50. Please list the names of any Deployments that violate this requirement.
+    
+    Report any violations using the following format:
+    VIOLATING: <resource name>
+setup: setup.sh
+cleanup: cleanup.sh
+expect:
+- contains: "VIOLATING: resource-002"
+- notContains: "VIOLATING: resource-001"
+isolation: cluster
+timeout: 5m

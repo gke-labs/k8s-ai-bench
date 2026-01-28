@@ -16,6 +16,6 @@ spec:
     name: opa
     resources:
       limits:
-        cpu: 1m
-        ephemeral-storage: 1Mi
-        memory: 1Mi
+        cpu: 100m
+        ephemeral-storage: 100Mi
+        memory: 1Gi

@@ -1,0 +1,25 @@
+apiVersion: test.gatekeeper.sh/v1alpha1
+kind: Suite
+metadata:
+  name: unique-ingress-host
+tests:
+- cases:
+  - assertions:
+    - violations: "no"
+    name: example-allowed
+    object: artifacts/alpha-01.yaml
+  - assertions:
+    - violations: "yes"
+    inventory:
+    - artifacts/inventory-example-disallowed-0-0.yaml
+    name: example-disallowed
+    object: artifacts/beta-01.yaml
+  - assertions:
+    - violations: "yes"
+    inventory:
+    - artifacts/inventory-example-disallowed2-0-0.yaml
+    name: example-disallowed2
+    object: artifacts/beta-02.yaml
+  constraint: constraint.yaml
+  name: unique-ingress-host
+  template: template.yaml
