@@ -1,0 +1,13 @@
+script:
+- prompt: |
+    I need you to check the Kubernetes Deployments in the gk-replica-limit Namespace.
+    The policy requires that any Deployment must have between 1 and 3 replicas specified.
+    Please identify any Deployments that violate this replica count requirement.
+    Report each violation using the format: VIOLATING: <resource name>
+setup: setup.sh
+cleanup: cleanup.sh
+expect:
+- contains: "VIOLATING: resource-002"
+- notContains: "VIOLATING: resource-001"
+isolation: cluster
+timeout: 5m

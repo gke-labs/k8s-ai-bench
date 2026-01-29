@@ -1,0 +1,16 @@
+script:
+- prompt: |
+    Hey, I need your help checking some Kubernetes Pods in the gk-required-probes Namespace.
+    We require all Pods to have at least one readiness and/or liveness probe defined.
+    Can you please identify any Pods in that Namespace that are missing these probes?
+    
+    For each violating resource, please print one line in the format:
+    VIOLATING: <resource name>
+setup: setup.sh
+cleanup: cleanup.sh
+expect:
+- contains: "VIOLATING: resource-002"
+- contains: "VIOLATING: resource-003"
+- notContains: "VIOLATING: resource-001"
+isolation: cluster
+timeout: 5m

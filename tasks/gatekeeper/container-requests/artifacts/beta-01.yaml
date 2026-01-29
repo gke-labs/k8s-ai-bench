@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    k8s-ai-bench/task: container-requests
+    owner: me.agilebank.demo
+  name: resource-002
+  namespace: gk-container-requests
+spec:
+  containers:
+  - args:
+    - run
+    - --server
+    - --addr=localhost:8080
+    image: openpolicyagent/opa:0.9.2
+    name: opa
+    resources:
+      requests:
+        cpu: 100m
+        memory: 2Gi

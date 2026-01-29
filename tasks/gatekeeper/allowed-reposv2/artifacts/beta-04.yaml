@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    k8s-ai-bench/task: allowed-reposv2
+  name: resource-006
+  namespace: gk-allowed-reposv2
+spec:
+  containers:
+  - image: myregistry.azurecr.io.malicious.com/malicious-image
+    name: image-1-malicious-registry-disallow
+    resources:
+      limits:
+        cpu: 1m
+        memory: 1Mi
+  - image: myregistry.azurecr.io/nginx
+    name: image-2-registry-allow
+    resources:
+      limits:
+        cpu: 1m
+        memory: 1Mi
+  - image: mydockerhubmalicious/python
+    name: image-3-malicious-image-with-registry-disallow
+    resources:
+      limits:
+        cpu: 1m
+        memory: 1Mi
+  - image: mydockerhub/python
+    name: image-4-image-with-registry-allow
+    resources:
+      limits:
+        cpu: 1m
+        memory: 1Mi

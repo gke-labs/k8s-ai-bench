@@ -1,0 +1,16 @@
+script:
+- prompt: |
+    Hey, can you check the Pods in the gk-container-cpu-requests-memory-limits-and-requests namespace and let me know which ones don't have both CPU and memory requests, and memory limits defined for all containers?
+    
+    Report each violating resource with this format:
+    VIOLATING: <resource name>
+setup: setup.sh
+cleanup: cleanup.sh
+expect:
+- contains: "VIOLATING: resource-003"
+- contains: "VIOLATING: resource-004"
+- contains: "VIOLATING: resource-005"
+- notContains: "VIOLATING: resource-001"
+- notContains: "VIOLATING: resource-002"
+isolation: cluster
+timeout: 5m

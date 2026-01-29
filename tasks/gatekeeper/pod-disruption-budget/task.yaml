@@ -1,0 +1,20 @@
+script:
+- prompt: |
+    I need you to check the Kubernetes resources in the gk-pod-disruption-budget namespace. Specifically, I want to ensure that we're not deploying PodDisruptionBudgets that would prevent voluntary disruptions. This means no PodDisruptionBudgets with `.spec.maxUnavailable` set to 0, and no PodDisruptionBudgets with `.spec.minAvailable` equal to the number of replicas managed by a Deployment, ReplicationController, ReplicaSet, or StatefulSet.
+    
+    Please inspect the Deployments and PodDisruptionBudgets within the gk-pod-disruption-budget namespace.
+    
+    For each resource that violates this policy, print one line with the following format:
+    VIOLATING: <resource name>
+setup: setup.sh
+cleanup: cleanup.sh
+expect:
+- contains: "VIOLATING: resource-002"
+- contains: "VIOLATING: resource-007"
+- notContains: "VIOLATING: resource-001"
+- notContains: "VIOLATING: resource-003"
+- notContains: "VIOLATING: resource-004"
+- notContains: "VIOLATING: resource-005"
+- notContains: "VIOLATING: resource-006"
+isolation: cluster
+timeout: 5m

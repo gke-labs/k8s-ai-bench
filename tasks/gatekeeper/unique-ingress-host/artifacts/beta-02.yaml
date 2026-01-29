@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  labels:
+    k8s-ai-bench/task: unique-ingress-host
+  name: resource-003
+  namespace: gk-unique-ingress-host
+spec:
+  rules:
+  - host: example-host2.example.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: nginx
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+  - host: example-host3.example.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: nginx2
+            port:
+              number: 80
+        path: /
+        pathType: Prefix

@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    k8s-ai-bench/task: ephemeral-storage-limit
+    owner: me.agilebank.demo
+  name: resource-001
+  namespace: gk-ephemeral-storage-limit
+spec:
+  containers:
+  - args:
+    - run
+    - --server
+    - --addr=localhost:8080
+    image: openpolicyagent/opa:0.9.2
+    name: opa
+    resources:
+      limits:
+        cpu: 100m
+        ephemeral-storage: 100Mi
+        memory: 1Gi

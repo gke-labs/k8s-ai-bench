@@ -1,0 +1,17 @@
+apiVersion: test.gatekeeper.sh/v1alpha1
+kind: Suite
+metadata:
+  name: replica-limit
+tests:
+- cases:
+  - assertions:
+    - violations: "no"
+    name: example-allowed
+    object: artifacts/alpha-01.yaml
+  - assertions:
+    - violations: "yes"
+    name: example-disallowed
+    object: artifacts/beta-01.yaml
+  constraint: constraint.yaml
+  name: replica-limit
+  template: template.yaml

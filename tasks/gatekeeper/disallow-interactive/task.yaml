@@ -1,0 +1,12 @@
+script:
+- prompt: |
+    I need you to check the Pods in the gk-disallow-interactive Namespace and tell me which ones are configured to allow interactive TTY connections. A Pod violates the policy if its containers have `spec.tty` and `spec.stdin` both set to true. Please list only the names of the violating Pods.
+    
+    VIOLATING: <resource name>
+setup: setup.sh
+cleanup: cleanup.sh
+expect:
+- contains: "VIOLATING: resource-002"
+- notContains: "VIOLATING: resource-001"
+isolation: cluster
+timeout: 5m

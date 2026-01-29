@@ -1,0 +1,13 @@
+script:
+- prompt: |
+    I need you to check the Pods in the gk-memory-ratio-only namespace.  The policy we're enforcing requires that, for each container, the resource limit cannot be more than twice the resource request.  Please list the names of any Pods that violate this policy.
+    
+    For each violating resource, print exactly one line:
+    VIOLATING: <resource name>
+setup: setup.sh
+cleanup: cleanup.sh
+expect:
+- contains: "VIOLATING: resource-002"
+- notContains: "VIOLATING: resource-001"
+isolation: cluster
+timeout: 5m

@@ -1,0 +1,37 @@
+apiVersion: test.gatekeeper.sh/v1alpha1
+kind: Suite
+metadata:
+  name: allowed-reposv2
+tests:
+- cases:
+  - assertions:
+    - violations: "no"
+    name: example-allowed
+    object: artifacts/alpha-01.yaml
+  - assertions:
+    - violations: "no"
+    name: example-allowed-images
+    object: artifacts/alpha-02.yaml
+  - assertions:
+    - violations: "yes"
+    name: container-disallowed
+    object: artifacts/beta-01.yaml
+  - assertions:
+    - violations: "yes"
+    name: initcontainer-disallowed
+    object: artifacts/beta-02.yaml
+  - assertions:
+    - violations: "yes"
+    name: both-disallowed
+    object: artifacts/beta-03.yaml
+  - assertions:
+    - violations: "yes"
+    name: disallowed-repository-and-registry
+    object: artifacts/beta-04.yaml
+  - assertions:
+    - violations: "yes"
+    name: disallowed-repository-images
+    object: artifacts/beta-05.yaml
+  constraint: constraint.yaml
+  name: allowed-reposv2
+  template: template.yaml

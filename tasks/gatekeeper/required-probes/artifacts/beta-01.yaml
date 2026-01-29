@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    k8s-ai-bench/task: required-probes
+  name: resource-002
+  namespace: gk-required-probes
+spec:
+  containers:
+  - image: nginx:1.25
+    livenessProbe: null
+    name: nginx-1
+    ports:
+    - containerPort: 80
+    volumeMounts:
+    - mountPath: /tmp/cache
+      name: cache-volume
+  - image: nginx
+    name: tomcat
+    ports:
+    - containerPort: 8080
+    readinessProbe:
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      tcpSocket:
+        port: 8080
+  volumes:
+  - emptyDir: {}
+    name: cache-volume

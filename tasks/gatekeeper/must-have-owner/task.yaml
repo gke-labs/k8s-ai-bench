@@ -1,0 +1,13 @@
+script:
+- prompt: |
+    Hey, I need help checking for policy violations in my Kubernetes cluster. I'm enforcing a policy that requires all Namespaces to have an `owner` label with a value that matches the regular expression "^[a-zA-Z]+.agilebank.demo$". Can you please check all the Namespaces cluster-wide and tell me which ones violate this policy?
+    
+    For each violating Namespace, please print one line like this: VIOLATING: <resource name>
+setup: setup.sh
+cleanup: cleanup.sh
+expect:
+- contains: "VIOLATING: resource-002"
+- contains: "VIOLATING: resource-003"
+- notContains: "VIOLATING: resource-001"
+isolation: cluster
+timeout: 5m

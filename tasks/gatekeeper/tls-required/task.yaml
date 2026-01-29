@@ -1,0 +1,13 @@
+script:
+- prompt: |
+    I need you to check all the Ingress resources in the gk-tls-required namespace. I'm enforcing a policy that requires all Ingress resources to be HTTPS only, meaning they must either have the `kubernetes.io/ingress.allow-http` annotation set to `false`, or have valid TLS configuration. Identify any Ingress resources that violate this policy.
+    
+    For each violating resource, print exactly one line using this format:
+    VIOLATING: <resource name>
+setup: setup.sh
+cleanup: cleanup.sh
+expect:
+- contains: "VIOLATING: resource-002"
+- notContains: "VIOLATING: resource-001"
+isolation: cluster
+timeout: 5m

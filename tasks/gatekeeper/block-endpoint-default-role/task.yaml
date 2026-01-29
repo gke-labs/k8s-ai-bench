@@ -1,0 +1,13 @@
+script:
+- prompt: |
+    I need you to check the Kubernetes cluster for any ClusterRoles that grant edit permissions to Endpoints. This is a security risk. Please identify all the violating ClusterRole names and print them.
+    
+    For each violating resource, print exactly one line:
+    VIOLATING: <resource name>
+setup: setup.sh
+cleanup: cleanup.sh
+expect:
+- contains: "VIOLATING: system:aggregate-to-edit"
+- notContains: "VIOLATING: resource-001"
+isolation: cluster
+timeout: 5m
