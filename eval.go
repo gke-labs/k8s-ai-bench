@@ -414,6 +414,20 @@ func evaluateTask(ctx context.Context, config EvalConfig, taskID string, task Ta
 					})
 				}
 			}
+			if expect.NotContains != "" {
+				re, err := regexp.Compile(expect.NotContains)
+				if err != nil {
+					expectationFailures = append(expectationFailures, model.Failure{
+						Message: fmt.Sprintf("invalid regex %q in task spec: %v", expect.NotContains, err),
+					})
+					continue
+				}
+				if re.MatchString(lastCmdOutput) {
+					expectationFailures = append(expectationFailures, model.Failure{
+						Message: fmt.Sprintf("regex %q matched output %q (should not have matched)", expect.NotContains, lastCmdOutput),
+					})
+				}
+			}
 		}
 
 		if len(expectationFailures) == 0 {
