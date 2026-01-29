@@ -1,0 +1,15 @@
+script:
+- prompt: |
+    I need you to check the Ingress resources in the gk-unique-ingress-host namespace.
+    The policy is that each Ingress must have a unique host specified in its rules.
+    Please list the names of any Ingresses that violate this policy.
+    For each violating resource, print exactly one line in this format:
+    VIOLATING: <resource name>
+setup: setup.sh
+cleanup: cleanup.sh
+expect:
+- contains: "VIOLATING: resource-002"
+- contains: "VIOLATING: resource-003"
+- notContains: "VIOLATING: resource-001"
+isolation: cluster
+timeout: 5m

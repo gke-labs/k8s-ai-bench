@@ -17,6 +17,8 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -488,6 +490,12 @@ func (x *TaskExecution) runSetup(ctx context.Context) error {
 		x.kubeConfig = kubeconfigPath
 
 		clusterName := fmt.Sprintf("k8s-ai-bench-%s", x.taskID)
+		// Truncate to avoid issues with vcluster resource names (hostPod names can trigger 63 char limit)
+		if len(clusterName) > 45 {
+			hash := sha256.Sum256([]byte(clusterName))
+			shortHash := hex.EncodeToString(hash[:])[:6]
+			clusterName = fmt.Sprintf("%s-%s", clusterName[:38], shortHash)
+		}
 		log.Info("creating cluster", "name", clusterName)
 
 		if err := x.clusterProvider.Create(clusterName); err != nil {

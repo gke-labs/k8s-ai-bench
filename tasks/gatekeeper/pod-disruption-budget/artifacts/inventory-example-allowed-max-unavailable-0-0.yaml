@@ -1,0 +1,13 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  labels:
+    k8s-ai-bench/task: pod-disruption-budget
+  name: inventory-nginx-pdb-allowed-2
+  namespace: gk-pod-disruption-budget
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: nginx
+      example: allowed-deployment-2

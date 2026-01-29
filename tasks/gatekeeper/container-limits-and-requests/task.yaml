@@ -1,0 +1,14 @@
+script:
+- prompt: |
+    I need you to check some resources in my Kubernetes cluster. Specifically, I want to make sure all containers in the gk-container-limits-and-requests Namespace have both CPU and memory limits and requests defined. Can you check the Pod resources in that Namespace and tell me which ones violate this policy?
+    
+    VIOLATING: <resource name>
+setup: setup.sh
+cleanup: cleanup.sh
+expect:
+- contains: "VIOLATING: resource-002"
+- contains: "VIOLATING: resource-003"
+- contains: "VIOLATING: resource-004"
+- notContains: "VIOLATING: resource-001"
+isolation: cluster
+timeout: 5m

@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    k8s-ai-bench/task: replica-limit
+  name: resource-001
+  namespace: gk-replica-limit
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - image: nginx:1.14.2
+        name: nginx
+        ports:
+        - containerPort: 80

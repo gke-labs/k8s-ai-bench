@@ -1,0 +1,29 @@
+apiVersion: test.gatekeeper.sh/v1alpha1
+kind: Suite
+metadata:
+  name: container-cpu-requests-memory-limits-and-requests
+tests:
+- cases:
+  - assertions:
+    - violations: "no"
+    name: limits-and-requests-defined-allowed
+    object: artifacts/alpha-01.yaml
+  - assertions:
+    - violations: "no"
+    name: only-cpu-requests-and-memory-limits-and-requests-defined-allowed
+    object: artifacts/alpha-02.yaml
+  - assertions:
+    - violations: "yes"
+    name: only-requests-defined-disallowed
+    object: artifacts/beta-01.yaml
+  - assertions:
+    - violations: "yes"
+    name: only-memory-limits-defined-disallowed
+    object: artifacts/beta-02.yaml
+  - assertions:
+    - violations: "yes"
+    name: empty-resources-disallowed
+    object: artifacts/beta-03.yaml
+  constraint: constraint.yaml
+  name: container-cpu-requests-memory-limits-and-requests
+  template: template.yaml

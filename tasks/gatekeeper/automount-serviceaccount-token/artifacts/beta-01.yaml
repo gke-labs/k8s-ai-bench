@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: nginx-automountserviceaccounttoken
+    k8s-ai-bench/task: automount-serviceaccount-token
+  name: resource-002
+  namespace: gk-automount-serviceaccount-token
+spec:
+  automountServiceAccountToken: true
+  containers:
+  - image: nginx
+    name: nginx

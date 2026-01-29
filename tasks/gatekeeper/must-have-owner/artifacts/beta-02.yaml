@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    k8s-ai-bench/task: must-have-owner
+    owner: user
+  name: resource-003

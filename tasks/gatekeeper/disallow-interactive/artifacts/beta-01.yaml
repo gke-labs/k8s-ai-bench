@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: nginx-privilege-escalation
+    k8s-ai-bench/task: disallow-interactive
+  name: resource-002
+  namespace: gk-disallow-interactive
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+    stdin: true
+    tty: true

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    k8s-ai-bench/task: must-have-key
+    taco: is-great
+  name: resource-002
+  namespace: gk-must-have-key
+spec:
+  containers:
+  - image: nginx
+    name: nginx

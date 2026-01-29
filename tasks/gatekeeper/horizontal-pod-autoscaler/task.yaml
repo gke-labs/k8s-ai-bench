@@ -1,0 +1,18 @@
+script:
+- prompt: |
+    Please inspect the Kubernetes cluster in the gk-horizontal-pod-autoscaler Namespace. I need you to identify any HorizontalPodAutoscalers that violate our policies.
+    
+    Specifically, we don't allow HorizontalPodAutoscalers with a minimum or maximum replica count outside of the range of 3 to 6. We also require that the difference between the minimum and maximum replicas be at least 1, and that the `scaleTargetRef` points to a valid Deployment in the same Namespace.
+    
+    Please check the HorizontalPodAutoscalers and Deployments in the gk-horizontal-pod-autoscaler Namespace, and list the names of any HorizontalPodAutoscalers that violate these rules.
+    
+    For each violating resource, print one line in this format: VIOLATING: <resource name>
+setup: setup.sh
+cleanup: cleanup.sh
+expect:
+- contains: "VIOLATING: resource-002"
+- contains: "VIOLATING: resource-003"
+- contains: "VIOLATING: resource-004"
+- notContains: "VIOLATING: resource-001"
+isolation: cluster
+timeout: 5m

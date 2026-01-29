@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    k8s-ai-bench/task: allowed-ip
+  name: resource-002
+  namespace: gk-allowed-ip
+spec:
+  externalIPs:
+  - 1.1.1.1
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: MyApp

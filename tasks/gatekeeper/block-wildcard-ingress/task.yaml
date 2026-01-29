@@ -1,0 +1,14 @@
+script:
+- prompt: |
+    I need you to check the Ingress resources in the gk-block-wildcard-ingress Namespace and identify any that are configured to allow wildcard or blank hostnames, as that could allow unauthorized traffic interception. Please list the names of any Ingress resources that violate this policy.
+    For each violating resource, print exactly one line:
+    VIOLATING: <resource name>
+setup: setup.sh
+cleanup: cleanup.sh
+expect:
+- contains: "VIOLATING: resource-002"
+- contains: "VIOLATING: resource-003"
+- contains: "VIOLATING: resource-004"
+- notContains: "VIOLATING: resource-001"
+isolation: cluster
+timeout: 5m

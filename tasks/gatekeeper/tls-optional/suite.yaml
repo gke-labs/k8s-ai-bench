@@ -1,0 +1,17 @@
+apiVersion: test.gatekeeper.sh/v1alpha1
+kind: Suite
+metadata:
+  name: tls-optional
+tests:
+- cases:
+  - assertions:
+    - violations: "no"
+    name: example-allowed-tls-optional
+    object: artifacts/alpha-01.yaml
+  - assertions:
+    - violations: "yes"
+    name: example-disallowed-tls-optional
+    object: artifacts/beta-01.yaml
+  constraint: constraint.yaml
+  name: tls-optional
+  template: template.yaml

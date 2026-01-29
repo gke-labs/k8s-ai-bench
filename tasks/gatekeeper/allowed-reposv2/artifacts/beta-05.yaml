@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    k8s-ai-bench/task: allowed-reposv2
+  name: resource-007
+  namespace: gk-allowed-reposv2
+spec:
+  containers:
+  - image: ubuntumalicious
+    name: image-1-malicious-basic-image-disallow
+    resources:
+      limits:
+        cpu: 1m
+        memory: 1Mi
+  - image: ubuntu:20.14
+    name: image-2-basic-image-allow
+    resources:
+      limits:
+        cpu: 1m
+        memory: 1Mi
+  - image: 123456789123.dkr.ecr.eu-west-1.amazonaws.com/postgresmalicious
+    name: image-3-malicious-image-with-registry-disallow
+    resources:
+      limits:
+        cpu: 1m
+        memory: 1Mi
+  - image: 123456789123.dkr.ecr.eu-west-1.amazonaws.com/postgres
+    name: image-4-image-with-registry-allow
+    resources:
+      limits:
+        cpu: 1m
+        memory: 1Mi

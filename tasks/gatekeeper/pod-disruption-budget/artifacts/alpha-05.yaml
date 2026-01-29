@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: non-matching-nginx
+    k8s-ai-bench/task: pod-disruption-budget
+  name: resource-006
+  namespace: gk-pod-disruption-budget
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: non-matching-nginx
+      example: allowed-deployment-4
+  template:
+    metadata:
+      labels:
+        app: non-matching-nginx
+        example: allowed-deployment-4
+    spec:
+      containers:
+      - image: nginx:1.14.2
+        name: nginx
+        ports:
+        - containerPort: 80

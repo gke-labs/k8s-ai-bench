@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: nginx
+    k8s-ai-bench/task: horizontal-pod-autoscaler
+  name: nginx-deployment
+  namespace: gk-horizontal-pod-autoscaler
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+      example: allowed-deployment
+  template:
+    metadata:
+      labels:
+        app: nginx
+        example: allowed-deployment
+    spec:
+      containers:
+      - image: nginx:1.14.2
+        name: nginx
+        ports:
+        - containerPort: 80

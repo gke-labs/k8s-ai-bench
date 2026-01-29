@@ -1,0 +1,12 @@
+script:
+- prompt: |
+    I need you to check all the Pods in the gk-container-image-must-have-digest Namespace. We require all container images to be specified with a digest, not just a tag. Can you identify any Pods that violate this policy?
+    
+    For each violating Pod you find, please output a single line in this format: VIOLATING: <resource name>
+setup: setup.sh
+cleanup: cleanup.sh
+expect:
+- contains: "VIOLATING: resource-002"
+- notContains: "VIOLATING: resource-001"
+isolation: cluster
+timeout: 5m

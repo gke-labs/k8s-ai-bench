@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    k8s-ai-bench/task: allowed-repos
+  name: resource-003
+  namespace: gk-allowed-repos
+spec:
+  containers:
+  - args:
+    - run
+    - --server
+    - --addr=localhost:8080
+    image: openpolicyagent/opa:0.9.2
+    name: opa
+    resources:
+      limits:
+        cpu: 1m
+        memory: 1Mi
+  initContainers:
+  - command:
+    - sh
+    - -c
+    - exit 0
+    image: nginx
+    name: nginxinit
+    resources:
+      limits:
+        cpu: 1m
+        memory: 1Mi

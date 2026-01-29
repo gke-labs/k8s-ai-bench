@@ -1,0 +1,13 @@
+script:
+- prompt: |
+    I need your help auditing the gk-automount-serviceaccount-token Namespace. I want to make sure that all Pods have `automountServiceAccountToken` set to `false`. Can you inspect all the Pods in that Namespace and tell me which ones don't comply with this?
+    
+    For each violating resource, please print exactly one line in the format:
+    VIOLATING: <resource name>
+setup: setup.sh
+cleanup: cleanup.sh
+expect:
+- contains: "VIOLATING: resource-002"
+- notContains: "VIOLATING: resource-001"
+isolation: cluster
+timeout: 5m

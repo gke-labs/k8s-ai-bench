@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    k8s-ai-bench/task: disallowed-tags
+  name: resource-002
+  namespace: gk-disallowed-tags
+spec:
+  containers:
+  - args:
+    - run
+    - --server
+    - --addr=localhost:8080
+    image: openpolicyagent/opa-exp:latest
+    name: opa-exp
+  - args:
+    - run
+    - --server
+    - --addr=localhost:8080
+    image: openpolicyagent/init:v1
+    name: opa-init
+  - args:
+    - run
+    - --server
+    - --addr=localhost:8080
+    image: openpolicyagent/opa-exp2:latest
+    name: opa-exp2

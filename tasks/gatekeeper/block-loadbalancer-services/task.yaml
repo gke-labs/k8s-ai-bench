@@ -1,0 +1,13 @@
+script:
+- prompt: |
+    Hey, could you check the gk-block-loadbalancer-services Namespace and identify any Services that are violating our policy? We're not allowing any Services of type LoadBalancer. Please list the names of any violating Services you find.
+    
+    Report each violating resource using this format:
+    VIOLATING: <resource name>
+setup: setup.sh
+cleanup: cleanup.sh
+expect:
+- contains: "VIOLATING: resource-002"
+- notContains: "VIOLATING: resource-001"
+isolation: cluster
+timeout: 5m

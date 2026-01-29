@@ -1,0 +1,15 @@
+script:
+- prompt: |
+    I need you to check the Kubernetes cluster for any Services in the gk-must-have-set-of-annotations namespace that are missing required annotations. Specifically, all Services must have both the `a8r.io/owner` and `a8r.io/runbook` annotations, and their values must match the allowed patterns.
+    
+    Please list the names of any violating Services in that namespace.
+    
+    For each violating resource, print exactly one line:
+    VIOLATING: <resource name>
+setup: setup.sh
+cleanup: cleanup.sh
+expect:
+- contains: "VIOLATING: resource-002"
+- notContains: "VIOLATING: resource-001"
+isolation: cluster
+timeout: 5m

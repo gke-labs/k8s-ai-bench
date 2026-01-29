@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  labels:
+    k8s-ai-bench/task: block-wildcard-ingress
+  name: resource-001
+  namespace: gk-block-wildcard-ingress
+spec:
+  rules:
+  - host: myservice.example.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: example
+            port:
+              number: 80
+        path: /
+        pathType: Prefix

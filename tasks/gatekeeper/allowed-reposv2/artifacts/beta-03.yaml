@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    k8s-ai-bench/task: allowed-reposv2
+  name: resource-005
+  namespace: gk-allowed-reposv2
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+    resources:
+      limits:
+        cpu: 1m
+        memory: 1Mi
+  initContainers:
+  - command:
+    - sh
+    - -c
+    - exit 0
+    image: nginx
+    name: nginxinit
+    resources:
+      limits:
+        cpu: 1m
+        memory: 1Mi

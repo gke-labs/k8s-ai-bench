@@ -1,0 +1,33 @@
+apiVersion: test.gatekeeper.sh/v1alpha1
+kind: Suite
+metadata:
+  name: disallowed-tags
+tests:
+- cases:
+  - assertions:
+    - violations: "no"
+    name: allowed
+    object: artifacts/alpha-01.yaml
+  - assertions:
+    - violations: "no"
+    name: exempt-images-with-disallowed-tags
+    object: artifacts/alpha-02.yaml
+  - assertions:
+    - violations: "yes"
+    name: no-tag
+    object: artifacts/beta-01.yaml
+  - assertions:
+    - violations: "yes"
+    name: no-tag-with-port
+    object: artifacts/beta-02.yaml
+  - assertions:
+    - violations: "yes"
+    name: single-disallowed-tag
+    object: artifacts/beta-03.yaml
+  - assertions:
+    - violations: "yes"
+    name: some-disallow-tags
+    object: artifacts/beta-04.yaml
+  constraint: constraint.yaml
+  name: disallowed-tags
+  template: template.yaml

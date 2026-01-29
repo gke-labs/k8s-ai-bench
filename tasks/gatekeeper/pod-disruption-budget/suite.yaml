@@ -1,0 +1,47 @@
+apiVersion: test.gatekeeper.sh/v1alpha1
+kind: Suite
+metadata:
+  name: pod-disruption-budget
+tests:
+- cases:
+  - assertions:
+    - violations: "no"
+    name: example-allowed-pdb
+    object: artifacts/alpha-01.yaml
+  - assertions:
+    - violations: "yes"
+    name: example-disallowed-pdb
+    object: artifacts/beta-01.yaml
+  - assertions:
+    - violations: "no"
+    inventory:
+    - artifacts/inventory-example-allowed-min-available-0-0.yaml
+    name: example-allowed-min-available
+    object: artifacts/alpha-02.yaml
+  - assertions:
+    - violations: "no"
+    inventory:
+    - artifacts/inventory-example-allowed-max-unavailable-0-0.yaml
+    name: example-allowed-max-unavailable
+    object: artifacts/alpha-03.yaml
+  - assertions:
+    - violations: "no"
+    inventory:
+    - artifacts/inventory-example-allowed-subset-selector-0-0.yaml
+    name: example-allowed-subset-selector
+    object: artifacts/alpha-04.yaml
+  - assertions:
+    - violations: "no"
+    inventory:
+    - artifacts/inventory-example-allowed-nomatch-selector-0-0.yaml
+    name: example-allowed-nomatch-selector
+    object: artifacts/alpha-05.yaml
+  - assertions:
+    - violations: "yes"
+    inventory:
+    - artifacts/inventory-example-disallowed-min-available-0-0.yaml
+    name: example-disallowed-min-available
+    object: artifacts/beta-02.yaml
+  constraint: constraint.yaml
+  name: pod-disruption-budget
+  template: template.yaml

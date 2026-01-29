@@ -1,0 +1,15 @@
+script:
+- prompt: |
+    Hey, can you check the Kubernetes cluster for me? I need to make sure all Pods in the gk-must-have-key Namespace have a label with the key `pizza`. It doesn't matter what the value of the label is, just that the key exists.
+    
+    List all Pod names in the gk-must-have-key Namespace that are missing this label.
+    
+    For each violating resource, print exactly one line:
+    VIOLATING: <resource name>
+setup: setup.sh
+cleanup: cleanup.sh
+expect:
+- contains: "VIOLATING: resource-002"
+- notContains: "VIOLATING: resource-001"
+isolation: cluster
+timeout: 5m

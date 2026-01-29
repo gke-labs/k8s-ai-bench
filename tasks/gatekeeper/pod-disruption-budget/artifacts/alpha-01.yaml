@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  labels:
+    k8s-ai-bench/task: pod-disruption-budget
+  name: resource-001
+  namespace: gk-pod-disruption-budget
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      foo: bar
