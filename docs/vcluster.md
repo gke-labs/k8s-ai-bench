@@ -30,6 +30,7 @@ Before running the benchmark, ensure you have the following tools installed and 
         *   Create Services (LoadBalancers)
         *   Create Pods/Deployments
         *   Manage PVCs/PVs
+        *   (Optional - for Ingress Mode) Manage Ingress objects
 
 ## Setup Steps
 
@@ -66,11 +67,39 @@ To verify, check that your current context is set correctly:
 kubectl config current-context
 ```
 
+### 1.1 Expose and Access vClusters on host cluster:
+
+**Local Background Proxy running on docker (Default):**
+By default, we use a local background proxy running in a Docker container to connect to vCluster.
+*   *Pros*: Zero setup on the host cluster.
+*   *Cons*: Slower startup (requires to wait for the proxy container to be ready), relies on local Docker, can be flaky at scale.
+
+**Ingress Controller (Recommended):**
+We can use an Ingress Controller on the host cluster to expose vCluster, and establish a direct connection to vCluster.
+*   *Pros*: Faster, more reliable, no local Docker dependency for connection.
+*   *Cons*: Requires installing an Ingress Controller on the host.
+
+If you plan to use the Ingress connection mode (recommended for stability), you need to install an Ingress Controller on the host cluster. Here we use Nginx Ingress Controller as an example:
+```bash
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+
+helm install ingress-nginx ingress-nginx/ingress-nginx \
+  --namespace ingress-nginx --create-namespace \
+  --set controller.extraArgs.enable-ssl-passthrough=true # Enable SSL passthrough for vCluster
+```
+Wait for the Ingress Controller to get an external IP:
+```bash
+kubectl get svc -n ingress-nginx
+```
+
 ### 2. Run k8s-ai-bench
 
 The `k8s-ai-bench` tool handles the lifecycle of the vCluster automatically. You need to specify:
 - `--cluster-provider vcluster`: Tells the harness to use vCluster.
 - `--host-cluster-context <context-name>`: The context name in your `kubeconfig` to use as the host.
+- `--host-cluster-kubeconfig <path-to-kubeconfig>`: (Optional) The path to your `kubeconfig` file to use as the host. Defaults to `--kubeconfig`.
+- `--host-cluster-ingress-external-ip <ip-address>`: (Optional) The external IP of your Ingress Controller. If provided, `k8s-ai-bench` will configure vCluster to be accessible via an Ingress instead of the default local proxy.
 
 **Example Command:**
 
@@ -98,7 +127,3 @@ When running benchmarking tasks on vCluster, we observed some unique behaviors c
     *   vCluster does not have its own PV provisioner by default; it syncs PVCs to the host.
     *   LLMs that hardcode `storageClassName: standard` usually succeed (if mapped), but those inventing random storage class names (`premium-ssd`) will fail unless `vcluster.yaml` is configured to sync SCs and the host actually has them.
     *   **Fix**: We explicitly enable `storageClasses`, `PersistentVolumeClaims`, `PersistentVolumes` sync in our `vcluster.yaml`.
-
-3.  **Connection to vCluster**:
-    *   We are currently connecting to vCluster using a local background-proxy to do port-forwarding on a docker container. This can be unstable and cause connection issues at scale.
-    *   **Potential Fix**: Have a ingress controller running on the host cluster and connect to vCluster via ingress.
