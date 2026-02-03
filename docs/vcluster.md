@@ -79,7 +79,17 @@ We can use an Ingress Controller on the host cluster to expose vCluster, and est
 *   *Pros*: Faster, more reliable, no local Docker dependency for connection.
 *   *Cons*: Requires installing an Ingress Controller on the host.
 
-If you plan to use the Ingress connection mode (recommended for stability), you need to install an Ingress Controller on the host cluster. Here we use Nginx Ingress Controller as an example:
+If you plan to use the Ingress connection mode (recommended for stability), you need to install an Ingress Controller on the host cluster.
+
+**Ingress Choice & Configuration on GKE**
+
+*   **Recommendation**: We recommend installing **ingress-nginx** even on GKE.
+*   **Reasoning**: GKE's built-in ingress controller (`ingress-gce`) integrated with GCP-native networking does **not** support SSL passthrough. vCluster relies on SSL passthrough for its default secure connection method. To use an ingress without SSL passthrough (like `ingress-gce`), you would need to configure Service Account authentication for connecting to vCluster, which changes the setup significantly. We prefer `ingress-nginx` as it provides a general solution independent of the cloud provider and supports SSL passthrough out of the box.
+*   **Deprecation Note**: Please be aware that `ingress-nginx` is marked for retirement and will receive no further releases after March 2026. Alternatives like **Traefik Proxy** can be used, but `ingress-nginx` serves as a standard reference for now.
+
+**Install Nginx Ingress Controller:**
+
+Here we use Nginx Ingress Controller as an example:
 ```bash
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
 helm repo update
