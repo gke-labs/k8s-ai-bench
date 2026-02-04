@@ -78,7 +78,6 @@ func (p *Provider) Create(name string) error {
 		return fmt.Errorf("failed to prepare env: %w", err)
 	}
 
-
 	valuesFile, err := p.createValuesFile(name)
 	if err != nil {
 		return fmt.Errorf("failed to create values file: %w", err)
