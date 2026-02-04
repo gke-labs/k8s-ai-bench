@@ -46,13 +46,7 @@ func runEvaluation(ctx context.Context, config EvalConfig) error {
 	case "kind":
 		clusterProvider = kind.New()
 	case "vcluster":
-		var cleanup func()
-		var err error
-		clusterProvider, cleanup, err = vcluster.New(config.HostClusterContext, config.HostClusterKubeConfig)
-		if err != nil {
-			return fmt.Errorf("failed to create vcluster provider: %w", err)
-		}
-		defer cleanup()
+		clusterProvider = vcluster.New(config.HostClusterContext, config.HostClusterKubeConfig, config.HostClusterIngressExternalIP)
 	default:
 		return fmt.Errorf("unknown cluster provider: %s", config.ClusterProvider)
 	}

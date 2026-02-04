@@ -19,57 +19,29 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"time"
+	"strings"
 
 	"github.com/gke-labs/k8s-ai-bench/pkg/cluster"
 )
 
 type Provider struct {
-	HostContext    string
-	HostKubeConfig string
-	ValuesPath     string
+	HostContext       string
+	HostKubeConfig    string
+	IngressExternalIP string
 }
 
-func New(hostContext, hostKubeConfig string) (cluster.Provider, func(), error) {
-	// Create a temporary file for vcluster values
-	valuesContent := `sync:
-  toHost:
-    persistentVolumeClaims:
-      enabled: true
-    persistentVolumes:
-      enabled: true
-    storageClasses:
-      enabled: true
-`
-	tmpFile, err := os.CreateTemp("", "vcluster-values-*.yaml")
-	fmt.Printf("create a temp vcluster values file: %s\n", tmpFile.Name())
-	if err != nil {
-		fmt.Printf("failed to create temp values file: %v\n", err)
-		return nil, func() {}, err
-	}
+func (p *Provider) UseIngress() bool {
+	return p.IngressExternalIP != ""
+}
 
-	if _, err := tmpFile.Write([]byte(valuesContent)); err != nil {
-		fmt.Printf("failed to write to temp values file: %v\n", err)
-		os.Remove(tmpFile.Name())
-		return nil, func() {}, err
-	}
-	if err := tmpFile.Close(); err != nil {
-		fmt.Printf("failed to close temp values file: %v\n", err)
-		os.Remove(tmpFile.Name())
-		return nil, func() {}, err
-	}
-
+func New(hostContext, hostKubeConfig, ingressExternalIP string) cluster.Provider {
 	p := &Provider{
-		HostContext:    hostContext,
-		HostKubeConfig: hostKubeConfig,
-		ValuesPath:     tmpFile.Name(),
+		HostContext:       hostContext,
+		HostKubeConfig:    hostKubeConfig,
+		IngressExternalIP: ingressExternalIP,
 	}
 
-	cleanup := func() {
-		os.Remove(tmpFile.Name())
-	}
-
-	return p, cleanup, nil
+	return p
 }
 
 func (p *Provider) Exists(name string) (bool, error) {
@@ -102,37 +74,28 @@ func (p *Provider) Exists(name string) (bool, error) {
 }
 
 func (p *Provider) Create(name string) error {
-	var createErr error
-	for retry := range 3 {
-		if retry > 0 {
-			fmt.Printf("Retrying vcluster creation, attempt %d\n", retry+1)
-			time.Sleep(5 * time.Second)
-		}
-
-		args := []string{"create", name, "--connect=false", "--values", p.ValuesPath}
-		if p.HostContext != "" {
-			args = append(args, "--context", p.HostContext)
-		}
-
-		createCmd := exec.Command("vcluster", args...)
-		createCmd.Env = append(os.Environ(), fmt.Sprintf("KUBECONFIG=%s", p.HostKubeConfig))
-		fmt.Printf("Creating vcluster %q\n", name)
-		createCmd.Stdout = os.Stdout
-		createCmd.Stderr = os.Stderr
-		createErr = createCmd.Run()
-		if createErr == nil {
-			return nil
-		}
-		fmt.Printf("failed to create vcluster, retrying...: %v\n", createErr)
+	if err := p.prepareEnv(name); err != nil {
+		return fmt.Errorf("failed to prepare env: %w", err)
 	}
-	return fmt.Errorf("failed to create vcluster after multiple retries: %w", createErr)
+
+	valuesFile, err := p.createValuesFile(name)
+	if err != nil {
+		return fmt.Errorf("failed to create values file: %w", err)
+	}
+	defer os.Remove(valuesFile)
+
+	args := []string{"create", name, "--connect=false", "--context", p.HostContext, "--values", valuesFile}
+
+	createCmd := exec.Command("vcluster", args...)
+	createCmd.Env = append(os.Environ(), fmt.Sprintf("KUBECONFIG=%s", p.HostKubeConfig))
+	fmt.Printf("Creating vcluster %q\n", name)
+	createCmd.Stdout = os.Stdout
+	createCmd.Stderr = os.Stderr
+	return createCmd.Run()
 }
 
 func (p *Provider) Delete(name string) error {
-	args := []string{"delete", name}
-	if p.HostContext != "" {
-		args = append(args, "--context", p.HostContext)
-	}
+	args := []string{"delete", name, "--context", p.HostContext, "--delete-namespace"}
 
 	deleteCmd := exec.Command("vcluster", args...)
 	deleteCmd.Env = append(os.Environ(), fmt.Sprintf("KUBECONFIG=%s", p.HostKubeConfig))
@@ -148,13 +111,123 @@ func (p *Provider) GetKubeconfig(name string) ([]byte, error) {
 	if p.HostContext != "" {
 		args = append(args, "--context", p.HostContext)
 	}
+	if p.UseIngress() {
+		serverURL := fmt.Sprintf("https://%s.%s.nip.io", name, p.IngressExternalIP)
+		args = append(args, "--server", serverURL)
+	}
 
 	cmd := exec.Command("vcluster", args...)
 	cmd.Env = append(os.Environ(), fmt.Sprintf("KUBECONFIG=%s", p.HostKubeConfig))
 	config, err := cmd.Output()
 
-	// Wait 60 secs for the local background proxy on docker to be running.
-	exec.Command("sleep", "60").Run()
+	if !p.UseIngress() {
+		// Wait 60 secs for the local background proxy on docker to be running.
+		exec.Command("sleep", "60").Run()
+	}
 
 	return config, err
+}
+
+func (p *Provider) createValuesFile(name string) (string, error) {
+	valuesContent := `sync:
+  toHost:
+    persistentVolumeClaims:
+      enabled: true
+    persistentVolumes:
+      enabled: true
+    storageClasses:
+      enabled: true
+`
+	if p.UseIngress() {
+		ingressHost := fmt.Sprintf("%s.%s.nip.io", name, p.IngressExternalIP)
+		valuesContent += fmt.Sprintf(`controlPlane:
+  proxy:
+    extraSANs:
+    - %s
+`, ingressHost)
+	}
+
+	tmpFile, err := os.CreateTemp("", "vcluster-values-*.yaml")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp values file: %w", err)
+	}
+
+	if _, err := tmpFile.Write([]byte(valuesContent)); err != nil {
+		os.Remove(tmpFile.Name())
+		return "", fmt.Errorf("failed to write to temp values file: %w", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		os.Remove(tmpFile.Name())
+		return "", fmt.Errorf("failed to close temp values file: %w", err)
+	}
+
+	return tmpFile.Name(), nil
+}
+
+func (p *Provider) prepareEnv(name string) error {
+	namespace := fmt.Sprintf("vcluster-%s", name)
+	// Create namespace if it doesn't exist
+	// kubectl create namespace <ns> --dry-run=client -o yaml | kubectl apply -f -
+	// simpler: just run create and ignore "already exists" error, or check first.
+	// explicit check is better or "create ns x" and check err.
+	// "kubectl create ns x" fails if exists.
+
+	// Better approach: apply a namespace manifest.
+	nsManifest := fmt.Sprintf(`
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: %s
+`, namespace)
+
+	if err := p.applyManifest(nsManifest); err != nil {
+		return fmt.Errorf("failed to ensure namespace %s: %w", namespace, err)
+	}
+
+	if p.UseIngress() {
+		ingressManifest := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: HTTPS
+    nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  name: %s
+  namespace: %s
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: %s.%s.nip.io
+    http:
+      paths:
+      - backend:
+          service:
+            name: %s
+            port:
+              number: 443
+        path: /
+        pathType: ImplementationSpecific
+`, name, namespace, name, p.IngressExternalIP, name)
+
+		if err := p.applyManifest(ingressManifest); err != nil {
+			return fmt.Errorf("failed to apply ingress: %w", err)
+		}
+	}
+	return nil
+}
+
+func (p *Provider) applyManifest(manifest string) error {
+	args := []string{"apply", "-f", "-"}
+	if p.HostContext != "" {
+		args = append(args, "--context", p.HostContext)
+	}
+	cmd := exec.Command("kubectl", args...)
+	cmd.Env = append(os.Environ(), fmt.Sprintf("KUBECONFIG=%s", p.HostKubeConfig))
+	cmd.Stdin = strings.NewReader(manifest)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("apply failed: %s: %w", string(out), err)
+	}
+	return nil
 }

@@ -104,16 +104,17 @@ type Expectation struct {
 }
 
 type EvalConfig struct {
-	LLMConfigs            []model.LLMConfig
-	KubeConfig            string
-	TasksDir              string
-	TaskPattern           string
-	AgentBin              string
-	Concurrency           int
-	ClusterCreationPolicy ClusterCreationPolicy
-	ClusterProvider       string
-	HostClusterContext    string
-	HostClusterKubeConfig string
+	LLMConfigs                   []model.LLMConfig
+	KubeConfig                   string
+	TasksDir                     string
+	TaskPattern                  string
+	AgentBin                     string
+	Concurrency                  int
+	ClusterCreationPolicy        ClusterCreationPolicy
+	ClusterProvider              string
+	HostClusterContext           string
+	HostClusterKubeConfig        string
+	HostClusterIngressExternalIP string
 
 	OutputDir string
 }
@@ -214,6 +215,7 @@ func runEvals(ctx context.Context) error {
 	mcpClient := false
 	clusterProvider := "kind"
 	hostClusterContext := ""
+	hostClusterIngressExternalIP := ""
 
 	flag.StringVar(&config.TasksDir, "tasks-dir", config.TasksDir, "Directory containing evaluation tasks")
 	flag.StringVar(&config.KubeConfig, "kubeconfig", config.KubeConfig, "Path to kubeconfig file")
@@ -230,6 +232,7 @@ func runEvals(ctx context.Context) error {
 	flag.StringVar(&config.ClusterProvider, "cluster-provider", clusterProvider, "Cluster provider to use (kind or vcluster)")
 	flag.StringVar(&config.HostClusterContext, "host-cluster-context", hostClusterContext, "Host cluster context for vcluster (optional)")
 	flag.StringVar(&config.HostClusterKubeConfig, "host-cluster-kubeconfig", "", "Host cluster kubeconfig for vcluster (optional, defaults to --kubeconfig)")
+	flag.StringVar(&config.HostClusterIngressExternalIP, "host-cluster-ingress-external-ip", hostClusterIngressExternalIP, "Host cluster ingress external IP for vcluster (optional)")
 	flag.Parse()
 
 	if config.ClusterProvider == "vcluster" {
