@@ -9,7 +9,7 @@
 # --- Variables ---
 # Define common variables to avoid repetition and ease maintenance.
 BIN_DIR      := ./bin
-CMD_DIR      := ./cmd
+CMD_DIR      := .
 BINARY_NAME  := kubectl-ai
 BINARY_PATH  := $(BIN_DIR)/$(BINARY_NAME)
 
