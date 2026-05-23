@@ -1,0 +1,11 @@
+script:
+- prompt: |
+    I need to rotate the `db-creds` Secret in the `payments` namespace.
+    Which workloads reference it? I want to know what to restart after the rotation.
+setup: setup.sh
+cleanup: cleanup.sh
+expect:
+- contains: "payments-api"
+- contains: "payments-worker"
+- contains: "reporting-job"
+difficulty: medium

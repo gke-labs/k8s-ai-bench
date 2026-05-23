@@ -1,0 +1,161 @@
+# Three Secrets in the namespace; only `db-creds` is the rotation target.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-creds
+  namespace: payments
+stringData:
+  username: "payments_app"
+  password: "rotate-me"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tls-cert
+  namespace: payments
+stringData:
+  tls.crt: "ZmFrZS1jZXJ0"
+  tls.key: "ZmFrZS1rZXk="
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: api-key
+  namespace: payments
+stringData:
+  token: "ZmFrZS10b2tlbg=="
+---
+# REFERENCES db-creds via envFrom.secretRef -> should be in the answer.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payments-api
+  namespace: payments
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payments-api
+  template:
+    metadata:
+      labels:
+        app: payments-api
+    spec:
+      containers:
+      - name: api
+        image: nginx:1.27
+        envFrom:
+        - secretRef:
+            name: db-creds
+---
+# REFERENCES db-creds via volumes.secret -> should be in the answer.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payments-worker
+  namespace: payments
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payments-worker
+  template:
+    metadata:
+      labels:
+        app: payments-worker
+    spec:
+      containers:
+      - name: worker
+        image: nginx:1.27
+        volumeMounts:
+        - name: db-creds
+          mountPath: /etc/db
+          readOnly: true
+      volumes:
+      - name: db-creds
+        secret:
+          secretName: db-creds
+---
+# Distractor: uses tls-cert, NOT db-creds.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payments-cache
+  namespace: payments
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payments-cache
+  template:
+    metadata:
+      labels:
+        app: payments-cache
+    spec:
+      containers:
+      - name: cache
+        image: nginx:1.27
+        volumeMounts:
+        - name: tls
+          mountPath: /etc/tls
+          readOnly: true
+      volumes:
+      - name: tls
+        secret:
+          secretName: tls-cert
+---
+# Distractor: uses api-key, NOT db-creds.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metrics-exporter
+  namespace: payments
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: metrics-exporter
+  template:
+    metadata:
+      labels:
+        app: metrics-exporter
+    spec:
+      containers:
+      - name: exporter
+        image: nginx:1.27
+        env:
+        - name: API_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: api-key
+              key: token
+---
+# REFERENCES db-creds via env.valueFrom.secretKeyRef on a CronJob -> should be in the answer.
+# Tests that the model checks non-Deployment workload kinds.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: reporting-job
+  namespace: payments
+spec:
+  schedule: "0 2 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: reporter
+            image: busybox:1.36
+            command: ["sh", "-c", "echo connecting to db with $DB_USER && sleep 1"]
+            env:
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: db-creds
+                  key: username
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: db-creds
+                  key: password
