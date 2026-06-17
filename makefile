@@ -1,7 +1,7 @@
-# Makefile for kubectl-ai
+# Makefile for k8s-ai-bench
 #
 # This Makefile provides a set of commands to build, test, run,
-# and manage the kubectl-ai project.
+# and manage the k8s-ai-bench project.
 
 # Default target to run when no target is specified.
 .DEFAULT_GOAL := help
@@ -9,13 +9,13 @@
 # --- Variables ---
 # Define common variables to avoid repetition and ease maintenance.
 BIN_DIR      := ./bin
-CMD_DIR      := ./cmd
-BINARY_NAME  := kubectl-ai
+MAIN_PACKAGE := .
+BINARY_NAME  := k8s-ai-bench
 BINARY_PATH  := $(BIN_DIR)/$(BINARY_NAME)
 
 # Attempt to determine GOPATH/bin for installation.
 # Fallback to a common default if `go env GOPATH` fails or is empty.
-GOPATH_BIN   := $(shell go env GOPATH)/bin
+GOPATH_BIN   := $(shell if command -v go >/dev/null 2>&1; then go env GOPATH; fi)/bin
 ifeq ($(GOPATH_BIN),/bin)
 	GOPATH_BIN := $(HOME)/go/bin
 endif
@@ -37,8 +37,8 @@ endif
 # Displays a list of available targets and their descriptions.
 # Descriptions are extracted from comments following '##'.
 help:
-	@echo "kubectl-ai Makefile"
-	@echo "-------------------"
+	@echo "k8s-ai-bench Makefile"
+	@echo "---------------------"
 	@echo "Available targets:"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
@@ -51,16 +51,15 @@ build-recursive: ## Build the binary using dev script (recursive for all modules
 build: ## Build single binary for the current platform
 	@echo "λ Building $(BINARY_NAME) for current platform..."
 	mkdir -p $(BIN_DIR)
-	go build -o $(BINARY_PATH) $(CMD_DIR)
+	go build -o $(BINARY_PATH) $(MAIN_PACKAGE)
 
 # --- Run Tasks ---
 run: ## Run the application
 	@echo "λ Running $(BINARY_NAME) from source..."
-	go run $(CMD_DIR)
+	go run $(MAIN_PACKAGE)
 
-run-html: ## Run with HTML UI
-	@echo "λ Running $(BINARY_NAME) with HTML UI from source..."
-	go run $(CMD_DIR) --ui-type web
+serve-site: ## Serve the local results visualization site
+	cd site && python3 -m http.server
 
 # --- Code Quality Tasks (using dev scripts) ---
 fmt: ## Format code using dev script
@@ -114,14 +113,10 @@ check: verify-format verify-gomod verify-autogen build-recursive vet ## Run all 
 	@echo "λ All checks completed."
 
 # --- Development Workflow ---
-# 'dev' and 'dev-html' depend on the 'build' target.
+# 'dev' depends on the 'build' target.
 dev: build ## Development mode - build and run
 	@echo "λ Starting $(BINARY_NAME) in dev mode..."
 	$(BINARY_PATH)
-
-dev-html: build ## Development mode - build and run with HTML UI
-	@echo "λ Starting $(BINARY_NAME) with HTML UI in dev mode..."
-	$(BINARY_PATH) --ui-type web
 
 # --- Maintenance Tasks ---
 clean: ## Clean build artifacts and coverage files
@@ -161,4 +156,3 @@ test-coverage: ## Run tests with coverage and generate HTML report
 	@echo "λ Generating coverage HTML report..."
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report generated: coverage.html"
-
