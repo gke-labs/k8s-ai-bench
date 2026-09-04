@@ -1,0 +1,6 @@
+script:
+- prompt: "The analytics-worker deployment in the analytics namespace has had its pod stuck in Pending for an hour. Nothing else in the cluster seems to be affected. Please figure out why and get it running."
+setup: "setup.sh"
+verifier: "verify.sh"
+cleanup: "cleanup.sh"
+difficulty: "easy"

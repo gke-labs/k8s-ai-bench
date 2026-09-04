@@ -1,0 +1,6 @@
+script:
+- prompt: "The usage-report CronJob in the reporting namespace hasn't produced a single report in days, but nobody has touched it and there are no errors. Can you figure out why it isn't running and fix it?"
+setup: "setup.sh"
+verifier: "verify.sh"
+cleanup: "cleanup.sh"
+difficulty: "easy"

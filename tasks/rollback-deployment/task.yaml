@@ -1,0 +1,6 @@
+script:
+- prompt: "We just deployed a new release of the frontend deployment in the storefront namespace and the rollout is stuck; the new pods never come up. Please roll it back to the previous working release and make sure it's fully healthy."
+setup: "setup.sh"
+verifier: "verify.sh"
+cleanup: "cleanup.sh"
+difficulty: "easy"

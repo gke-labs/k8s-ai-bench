@@ -1,0 +1,6 @@
+script:
+- prompt: "Other services in our cluster get 'connection refused' when they call http://catalog-api.catalog.svc.cluster.local, but the catalog-api pods in the catalog namespace are all Running and Ready. Can you find the problem and fix it?"
+setup: "setup.sh"
+verifier: "verify.sh"
+cleanup: "cleanup.sh"
+difficulty: "medium"

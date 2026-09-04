@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-api
+  namespace: catalog
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: catalog-api
+  template:
+    metadata:
+      labels:
+        app: catalog-api
+    spec:
+      containers:
+      - name: catalog-api
+        image: nginx:1.27
+        ports:
+        - name: http
+          containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog-api
+  namespace: catalog
+spec:
+  selector:
+    app: catalog-api
+  ports:
+  - name: http
+    port: 80
+    # The problem: the container listens on 80, not 8080.
+    # The selector matches so endpoints exist, but every connection is refused.
+    targetPort: 8080

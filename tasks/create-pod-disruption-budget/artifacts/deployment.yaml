@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payments-api
+  namespace: payments
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: payments-api
+      tier: backend
+  template:
+    metadata:
+      labels:
+        app: payments-api
+        tier: backend
+    spec:
+      containers:
+      - name: payments-api
+        image: nginx:1.27
+        ports:
+        - containerPort: 80

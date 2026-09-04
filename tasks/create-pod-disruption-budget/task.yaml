@@ -1,0 +1,6 @@
+script:
+- prompt: "We have node maintenance scheduled for this weekend. Make sure the payments-api deployment in the payments namespace always keeps at least 2 pods up while nodes are being drained."
+setup: "setup.sh"
+verifier: "verify.sh"
+cleanup: "cleanup.sh"
+difficulty: "medium"

@@ -1,0 +1,6 @@
+script:
+- prompt: "The checkout-api deployment in the checkout namespace has been stuck for 10 minutes and never becomes ready, even though the database it depends on is up. Can you find out why and fix it?"
+setup: "setup.sh"
+verifier: "verify.sh"
+cleanup: "cleanup.sh"
+difficulty: "medium"

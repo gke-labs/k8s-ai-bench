@@ -1,0 +1,6 @@
+script:
+- prompt: "Our inventory service in the inventory namespace can't reach its database. Its config points at db-0.inventory-db.inventory.svc.cluster.local and it keeps logging 'name resolution failed'. The db pod itself looks healthy. Please fix this so that hostname resolves, without changing the application's config."
+setup: "setup.sh"
+verifier: "verify.sh"
+cleanup: "cleanup.sh"
+difficulty: "hard"

@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: inventory-db
+  namespace: inventory
+  labels:
+    app: inventory-db
+spec:
+  clusterIP: None
+  selector:
+    app: inventory-db
+  ports:
+  - name: db
+    port: 5432
+    targetPort: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: db
+  namespace: inventory
+spec:
+  # The problem: serviceName must reference the headless Service that governs the
+  # StatefulSet (inventory-db). It points at a Service that does not exist, so no
+  # db-0.inventory-db DNS record is ever created. serviceName is immutable, so the
+  # StatefulSet has to be recreated with the right value.
+  serviceName: db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: inventory-db
+  template:
+    metadata:
+      labels:
+        app: inventory-db
+    spec:
+      containers:
+      - name: db
+        image: busybox:1.36
+        command: ["sh", "-c", "while true; do nc -l -p 5432 -e echo ok; done"]
+        ports:
+        - name: db
+          containerPort: 5432

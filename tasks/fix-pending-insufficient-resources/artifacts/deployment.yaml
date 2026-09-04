@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics-worker
+  namespace: analytics
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: analytics-worker
+  template:
+    metadata:
+      labels:
+        app: analytics-worker
+    spec:
+      containers:
+      - name: worker
+        image: busybox:1.36
+        command: ["sh", "-c", "while true; do echo processing; sleep 30; done"]
+        resources:
+          requests:
+            cpu: 100m
+            # The problem: a unit typo (Gi instead of Mi) requests 256 GiB of memory,
+            # which no node can satisfy, so the scheduler reports "Insufficient memory".
+            memory: 256Gi
+          limits:
+            cpu: 500m
+            memory: 256Gi
