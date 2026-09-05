@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: invoice-api
+  namespace: billing
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: invoice-api
+  template:
+    metadata:
+      labels:
+        app: invoice-api
+    spec:
+      containers:
+      - name: invoice-api
+        image: nginx:1.27
+        ports:
+        - containerPort: 80
+        # The problem: the namespace ResourceQuota constrains requests/limits for
+        # cpu and memory, so every pod must declare them. This pod template declares
+        # none, so the ReplicaSet controller's pod creations are rejected with
+        # "failed quota: billing-compute-quota: must specify limits.cpu ...".

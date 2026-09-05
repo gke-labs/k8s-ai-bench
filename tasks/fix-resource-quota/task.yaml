@@ -1,0 +1,6 @@
+script:
+- prompt: "The invoice-api deployment in the billing namespace shows 0/2 replicas ready and no pods are being created at all. The platform team manages the resource quota in that namespace, so please don't remove or loosen it. Can you get invoice-api running with both replicas?"
+setup: "setup.sh"
+verifier: "verify.sh"
+cleanup: "cleanup.sh"
+difficulty: "hard"

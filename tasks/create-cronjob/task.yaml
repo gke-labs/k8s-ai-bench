@@ -1,0 +1,6 @@
+script:
+- prompt: "In the platform-ops namespace, set up a scheduled job called log-rotate that runs every 15 minutes using the busybox:1.36 image and runs the command `echo rotating logs`. Two runs must never overlap, and I only want to keep the last 3 successful and the last 1 failed run around."
+setup: "setup.sh"
+verifier: "verify.sh"
+cleanup: "cleanup.sh"
+difficulty: "medium"
