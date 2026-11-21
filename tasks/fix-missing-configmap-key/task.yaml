@@ -1,0 +1,5 @@
+script: "Since the config rollout this morning every pod of the checkout deployment in the storefront namespace fails to start. Customers cannot pay. Please get checkout running again."
+setup: "setup.sh"
+verifier: "verify.sh"
+cleanup: "cleanup.sh"
+difficulty: "easy"
