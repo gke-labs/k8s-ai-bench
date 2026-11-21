@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout
+  namespace: storefront
+  labels:
+    app: checkout
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: checkout
+  template:
+    metadata:
+      labels:
+        app: checkout
+    spec:
+      containers:
+      - name: checkout
+        image: nginx:1.27-alpine
+        ports:
+        - containerPort: 80
+        env:
+        - name: PAYMENT_GATEWAY_URL
+          valueFrom:
+            configMapKeyRef:
+              name: checkout-config
+              key: PAYMENT_GATEWAY_URL
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: checkout-config
+              key: LOG_LEVEL

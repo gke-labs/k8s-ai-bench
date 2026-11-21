@@ -1,0 +1,5 @@
+script: "The api deployment in the analytics namespace has been stuck initializing for over an hour and the dashboard behind it is down. Can you find out why and get it serving again?"
+setup: "setup.sh"
+verifier: "verify.sh"
+cleanup: "cleanup.sh"
+difficulty: "medium"
